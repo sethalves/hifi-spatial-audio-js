@@ -231,6 +231,9 @@ export class Diagnostics {
      * Return success, or a promise for success.
      */
     report(reportString:string) {
+        // 2021-12-23: The diagnostics server is no longer running. Return false immediately.
+        return false;
+
         if (!xNavigator.onLine) return false;
         if (!xfetch) return false;
         console.log(reportString);

@@ -1,3 +1,8 @@
+import { v4 as uuidv4, parse as uuidParse, stringify as uuidStringify, NIL as nullID } from "uuid";
+import {
+    Uuid
+} from "./ssm";
+
 var DEBUG = true;
 
 /** 
@@ -8,6 +13,17 @@ var DEBUG = true;
 export class RaviUtils {
 
 
+  static uuidToProtoUUID(u : string) : Uuid {
+    var asBytes : any = uuidParse(u)
+    var result: Uuid = { value: asBytes };
+    return result;
+  }
+
+  static protoUUIDToUuid(u : Uuid) : string {
+    var asBytes : any = u.value;
+    return uuidStringify(asBytes);
+  }
+
   /**
    * Simple UUID implementation.
    * Taken from http://stackoverflow.com/a/105074/515584
@@ -15,11 +31,7 @@ export class RaviUtils {
    * for RAVI handling.
    */
   static createUUID(): string {
-    function s4() {
-      return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
-    }
-  
-    return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
+    return uuidv4();
   }
   
   

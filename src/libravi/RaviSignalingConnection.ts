@@ -1,4 +1,29 @@
 import { RaviUtils } from "./RaviUtils";
+import { util, configure, Writer, Reader } from "protobufjs/minimal";
+import { v4 as uuidv4, parse as uuidParse, stringify as uuidStringify, NIL as nullID } from "uuid";
+import {
+
+    Uuid,
+
+    CoordinatorClientMessage,
+    CoordinatorClientMessage_MessageType,
+    SDP,
+    IceCandidate,
+    TellClientAboutMixer,
+    RequestRTCRenegotiation,
+    ClientHello,
+
+    CoordinatorMessage,
+    CoordinatorMessage_MessageType,
+    ErrorResponse,
+
+    ClientMessage,
+    ClientMessage_MessageType,
+    SetClientPosition,
+    KillServerRequest
+
+} from "./ssm";
+
 
 /**
  * Enum for representing different possible states
@@ -211,7 +236,7 @@ export class RaviSignalingConnection {
    *
    * @param {string} message The message to send
    */
-  send(message: string) {
+  send(message: any) {
     this._signalingImplementation._send(message);
   }
   
@@ -299,6 +324,9 @@ export class RaviSignalingConnection {
    * @private
    */
   _handleMessage(message: any) {
+    RaviUtils.log("_handleMessage: received message", "RaviSignalingConnection");
+    console.error(message);
+    /*
     RaviUtils.log("_doOnmessage: " + RaviUtils.safelyPrintable(message), "RaviSignalingConnection");
     // This is a special case for when the server side is in an "unavailable" state -- it will
     // send back a special JSON packet marking itself as "service-unavailable". Handle this situation
@@ -317,6 +345,8 @@ export class RaviSignalingConnection {
             // so no-op here and just let the rest of the code deal with it.
         }
     }
+    */
+    
     this._messageHandlers.forEach(function(handler) {
       if (handler) {
         handler(message); 
@@ -390,6 +420,7 @@ class RaviSignalingWebSocketImplementation {
     }
 
     this._webSocket = new crossPlatformWebSocket(socketAddress);
+    this._webSocket.binaryType = "arraybuffer";
 
     // The WebSocket's open, error, and close events will just
     // call back up to the main RaviSignalingConnection's 
@@ -409,6 +440,7 @@ class RaviSignalingWebSocketImplementation {
    * @private
    */
   _onWebSocketOpen = (function(event: any) {
+    
     this._raviSignalingConnection._handleStateChange(event, RaviSignalingStates.OPEN);
   }).bind(this);
 
@@ -438,10 +470,10 @@ class RaviSignalingWebSocketImplementation {
   /**
    * @private
    */
-  _send(message: any) {
+  _send(msg: any) {
     if (this._webSocket && this._webSocket.readyState === crossPlatformWebSocket.OPEN) {
-        RaviUtils.log("Sending message to server: " + message, "RaviSignalingWebSocketImplementation");
-        this._webSocket.send(message);
+        RaviUtils.log("Sending message to server", "RaviSignalingWebSocketImplementation");
+        this._webSocket.send(msg.buffer.slice(msg.byteOffset, msg.byteOffset + msg.length));
     }
   }
   

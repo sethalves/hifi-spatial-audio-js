@@ -18,6 +18,13 @@ import { RaviSignalingConnection, RaviSignalingStates } from "../libravi/RaviSig
 import { Diagnostics } from "../diagnostics/diagnostics";
 import pako from 'pako'
 
+
+import {
+    ClientMessage,
+    ClientMessage_MessageType,
+    SetClientPosition
+} from "../libravi/ssm";
+
 const isBrowser = typeof window !== 'undefined';
 // Since we're initializing a MediaStream, we need to
 // do it using the correct cross-platform class (node or browser)
@@ -366,38 +373,25 @@ export class HiFiMixerSession {
                 });
             }
 
-            let initTimeout = setTimeout(async () => {
-                let errMsg = `Couldn't connect to mixer: Call to \`init\` timed out!`
-                return reject({
-                    success: false,
-                    error: errMsg,
-                    disableReconnect: this._disableReconnect
-                });
-            }, INIT_TIMEOUT_MS);
-
-            commandController.queueCommand("audionet.init", initData, async (response: string) => {
-                clearTimeout(initTimeout);
-                let parsedResponse: any;
-                try {
-                    parsedResponse = JSON.parse(response);
-                    this.mixerInfo["connected"] = true;
-                    this.mixerInfo["build_number"] = parsedResponse.build_number;
-                    this.mixerInfo["build_type"] = parsedResponse.build_type;
-                    this.mixerInfo["build_version"] = parsedResponse.build_version;
-                    this.mixerInfo["visit_id_hash"] = parsedResponse.visit_id_hash;
-                    return resolve({
-                        success: true,
-                        audionetInitResponse: parsedResponse,
-                        disableReconnect: this._disableReconnect
-                    });
-                } catch (e) {
-                    return reject({
-                        success: false,
-                        error: `Couldn't parse init response! Parse error:\n${e}`,
-                        disableReconnect: this._disableReconnect
-                    });
-                }
+            /* TODO: Confirm that the mixer is connected. For now, assume success. */
+            let parsedResponse: any;
+            parsedResponse =  {
+                build_number: "0",
+                build_type: "dev",
+                build_version: "alpha",
+                visit_id_hash: this._raviSession.getUUID()
+            }
+            this.mixerInfo["connected"] = true;
+            this.mixerInfo["build_number"] = parsedResponse.build_number;
+            this.mixerInfo["build_type"] = parsedResponse.build_type;
+            this.mixerInfo["build_version"] = parsedResponse.build_version;
+            this.mixerInfo["visit_id_hash"] = parsedResponse.visit_id_hash;
+            return resolve({
+                success: true,
+                audionetInitResponse: parsedResponse,
+                disableReconnect: this._disableReconnect
             });
+
         });
     }
 
@@ -1294,7 +1288,28 @@ export class HiFiMixerSession {
             if (commandController) {
                 // Stringified NaN values get converted to null, which the mixer interprets as unset
                 let stringifiedDataForMixer = JSON.stringify(dataForMixer);
-                commandController.sendInput(stringifiedDataForMixer);
+
+                // Turn the data into a protobuf object
+                dataForMixer.id = this._raviSession.getUUID();
+                var setClientPosition : SetClientPosition = SetClientPosition.fromJSON(dataForMixer);
+
+                // Something's up with setting ID in dataForMixer and then passing it into fromJSON --
+                // it ends up not converting the UUID properly. But I'm not quite up to figuring out
+                // what's going on ATM, so just setting it after the fact.
+                setClientPosition.id = RaviUtils.uuidToProtoUUID(this._raviSession.getUUID())
+
+                var clientMessage: ClientMessage = {
+                    messageType: ClientMessage_MessageType.SET_CLIENT_POSITION,
+                    requestDetails: {
+                        $case: "setClientPosition",
+                        setClientPosition : setClientPosition
+                    }
+                };
+
+                // Encode and send
+                var msg = ClientMessage.encode(clientMessage).finish();
+                commandController.sendInput(msg);
+
                 return {
                     success: true,
                     stringifiedDataForMixer: stringifiedDataForMixer

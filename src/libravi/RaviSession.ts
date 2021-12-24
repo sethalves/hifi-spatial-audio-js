@@ -4,6 +4,31 @@ import { RaviStreamController } from './RaviStreamController';
 import { RaviUtils } from './RaviUtils';
 import { RaviCommandController } from './RaviCommandController';
 
+import { util, configure, Writer, Reader } from "protobufjs/minimal";
+import { v4 as uuidv4, parse as uuidParse, stringify as uuidStringify, NIL as nullID } from "uuid";
+import {
+
+    Uuid,
+
+    CoordinatorClientMessage,
+    CoordinatorClientMessage_MessageType,
+    SDP,
+    IceCandidate,
+    TellClientAboutMixer,
+    RequestRTCRenegotiation,
+    ClientHello,
+
+    CoordinatorMessage,
+    CoordinatorMessage_MessageType,
+    ErrorResponse,
+
+    ClientMessage,
+    ClientMessage_MessageType,
+    SetClientPosition,
+    KillServerRequest
+
+} from "./ssm";
+
 export interface WebRTCSessionParams {
   /**
    * The minimum jitter buffer duration. Units are seconds. The default is 0 seconds.
@@ -400,17 +425,29 @@ export class RaviSession {
     RaviUtils.log("Received new channel: ", "RaviSession");
     RaviUtils.log(event, "RaviSession");
     
-    switch (event.channel.label) {
-      case "ravi.input":
-        this._commandController._setInputDataChannel(event.channel);
-        break;
-      case "ravi.command":
-        this._commandController._setCommandDataChannel(event.channel);
-        break;
-      default:
-        RaviUtils.log("Received unknown data channel named " + event.channel.label, "RaviSession");
-        break;
-    }
+    // Only one channel for SSM; use it as the input channel because
+    // it's currently only used for position updates
+    this._commandController._setInputDataChannel(event.channel);
+
+    // Initialize the client position to 0 when the data channel is opened.
+    // (TODO: Don't do this. Let the client initialize it to the correct location, or something.)
+    var setClientPosition : SetClientPosition = {
+            id : RaviUtils.uuidToProtoUUID(this.getUUID()),
+            x : 0,
+            y : 0,
+            facing : 0
+    };
+
+    var clientMessage: ClientMessage = {
+            messageType: ClientMessage_MessageType.SET_CLIENT_POSITION,
+            requestDetails: {
+                $case: "setClientPosition",
+                setClientPosition : setClientPosition
+            }
+    };
+
+    var msg = ClientMessage.encode(clientMessage).finish();
+    this._commandController.sendInput(msg);
   }
 
   /** 
@@ -953,16 +990,22 @@ class RaviWebRTCImplementation {
       this._signalingConnection.addStateChangeHandler(this._shortCircuitHandler);
 
       // Send the magic string for opening a connection.
-      // with params eventually
-      let message: any = {};
-      if (params) {
-          message = params;
-          message["sessionID"] = this._raviSession.getUUID();
-      } else {
-          message = this._raviSession.getUUID();
-      }
 
-      this._signalingConnection.send(JSON.stringify({'request': message}));
+      var clientHello: ClientHello = {
+        clientID: RaviUtils.uuidToProtoUUID(this._raviSession.getUUID()),
+        secret: RaviUtils.uuidToProtoUUID(RaviUtils.createUUID())
+      };
+
+      var coordClientMessage: CoordinatorClientMessage = {
+        messageType: CoordinatorClientMessage_MessageType.CLIENT_HELLO,
+        messageDetails: {
+          $case: "clientHello",
+          clientHello: clientHello,
+        }
+      };
+
+      var msg = CoordinatorClientMessage.encode(coordClientMessage).finish();
+      this._signalingConnection.send(msg);
     }
   }
 
@@ -1047,12 +1090,31 @@ class RaviWebRTCImplementation {
   _doOnicecandidate(event: any) {
     if (event.candidate && event.candidate != "") {
       RaviUtils.log("Sending local ICE candidate: " + JSON.stringify(event.candidate), "RaviWebRTCImplementation");
-      this._signalingConnection.send(JSON.stringify({'ice': event.candidate, 'uuid': this._raviSession.getUUID()}));
+
+      // Note: need to convert event.candidate to a string to placate node.
+      var iceCandidate : IceCandidate = {
+        peerID : RaviUtils.uuidToProtoUUID(this._raviSession.getUUID()),
+        candidate: event.candidate.toString(),
+        sdpMid : event.candidate.sdpMid,
+        sdpMLineIndex: event.candidate.sdpMLineIndex
+      };
+
+      var coordClientMessage: CoordinatorClientMessage = {
+        messageType: CoordinatorClientMessage_MessageType.ICE_CANDIDATE,
+        messageDetails: {
+            $case: "iceCandidate",
+            iceCandidate : iceCandidate,
+        }
+      };
+
+      var msg = CoordinatorClientMessage.encode(coordClientMessage).finish();
+
+      this._signalingConnection.send(msg);
     } else {
       RaviUtils.log("End of local ICE candidates", "RaviSession");
     }
   }
-  
+
   /**
    * Handle renegotiation when needed.
    * 
@@ -1129,6 +1191,7 @@ class RaviWebRTCImplementation {
     }
     
     // Make sure we have a message, and that it's for this particular RAVI session
+    /*
     if (event && event.data) {
       RaviUtils.log('Message from server: ' + event.data, "RaviWebRTCImplementation");
       fullMessage = JSON.parse(event.data);
@@ -1138,108 +1201,136 @@ class RaviWebRTCImplementation {
     }
     signal = fullMessage[raviSession.getUUID()];
     if (!signal) return; // This message is not for me
+    */
 
-    // We have a signal; check first to see if it's an SDP
-    if (signal.sdp) {
-      RaviUtils.log("Received sdp type=" + signal.type, "RaviWebRTCImplementation");
+    var coordinatorMessage = CoordinatorMessage.decode(new Uint8Array(event.data));
 
-      // use user-specified TURN config if found
-      if (sessionImplementation._customStunAndTurn) {
-        const CUSTOM_TURN_CONFIG = {
-          'urls': sessionImplementation._customStunAndTurn.turnUrls,
-          'username': sessionImplementation._customStunAndTurn.turnUsername,
-          'credential': sessionImplementation._customStunAndTurn.turnCredential
-        };
-        const CUSTOM_STUN_CONFIG = {
-          'urls': sessionImplementation._customStunAndTurn.stunUrls
-        };
-        peerConnectionConfig = {
-          'iceServers': [
-            CUSTOM_STUN_CONFIG,
-            CUSTOM_TURN_CONFIG
-          ]
-        };
-      // grab the TURN config if found
-      } else if (signal.turn && signal.turn.urls && signal.turn.username && signal.turn.credential) {
-        // We appear to need to humor TypeScript by setting this to a constant the
-        // same way we do for the default
-        const DYNAMIC_TURN_CONFIG = {
-          'urls': signal.turn.urls,
-          'username': signal.turn.username,
-          'credential': signal.turn.credential
-        };
-        peerConnectionConfig = {
-          'iceServers': [
-            DEFAULT_STUN_CONFIG,
-            DYNAMIC_TURN_CONFIG
-          ]
-        };
-      }
+    switch(coordinatorMessage.messageDetails.$case) {
 
-      // SAD STATE OF AFFAIRS: there is no way (AFAICT) to modify
-      // _rtcConnection.configuration after the RtcConnection ctor.
-      // WORKAROUND: we wait until the first websocket message (e.g. the sdp offer),
-      // which could include TURN config info, before we initialize _rtcConnection.
-      if (!this._rtcConnection) {
-        this._initRtcConnection();
-        // If someone has already set the audio input stream, add it to the rtc connection
-        // now that it's been initialized.
-        if (this._audioInputStream) {
-          this._addAudioInputStream(this._audioInputStream);
+      // We have a signal; check first to see if it's an SDP
+      case "mixerSDP":
+        var sdp : SDP = coordinatorMessage.messageDetails.mixerSDP;
+        var serverID : string = RaviUtils.protoUUIDToUuid(sdp.peerID);
+        RaviUtils.log("Received sdp type=" + sdp.sdpType, "RaviWebRTCImplementation");
+
+        // use user-specified TURN config if found
+        if (sessionImplementation._customStunAndTurn) {
+          const CUSTOM_TURN_CONFIG = {
+            'urls': sessionImplementation._customStunAndTurn.turnUrls,
+            'username': sessionImplementation._customStunAndTurn.turnUsername,
+            'credential': sessionImplementation._customStunAndTurn.turnCredential
+          };
+          const CUSTOM_STUN_CONFIG = {
+            'urls': sessionImplementation._customStunAndTurn.stunUrls
+          };
+          peerConnectionConfig = {
+            'iceServers': [
+              CUSTOM_STUN_CONFIG,
+              CUSTOM_TURN_CONFIG
+            ]
+          };
+          /*
+          // grab the TURN config if found
+          } else if (signal.turn && signal.turn.urls && signal.turn.username && signal.turn.credential) {
+            // We appear to need to humor TypeScript by setting this to a constant the
+            // same way we do for the default
+            const DYNAMIC_TURN_CONFIG = {
+              'urls': signal.turn.urls,
+              'username': signal.turn.username,
+              'credential': signal.turn.credential
+            };
+            peerConnectionConfig = {
+              'iceServers': [
+                DEFAULT_STUN_CONFIG,
+                DYNAMIC_TURN_CONFIG
+              ]
+            };
+          */
         }
-        if (this._videoInputStream) {
-          this._addVideoInputStream(this._videoInputStream);
+
+        // SAD STATE OF AFFAIRS: there is no way (AFAICT) to modify
+        // _rtcConnection.configuration after the RtcConnection ctor.
+        // WORKAROUND: we wait until the first websocket message (e.g. the sdp offer),
+        // which could include TURN config info, before we initialize _rtcConnection.
+        if (!this._rtcConnection) {
+          this._initRtcConnection();
+          // If someone has already set the audio input stream, add it to the rtc connection
+          // now that it's been initialized.
+          if (this._audioInputStream) {
+            this._addAudioInputStream(this._audioInputStream);
+          }
+          if (this._videoInputStream) {
+            this._addVideoInputStream(this._videoInputStream);
+          }
         }
-      }
-      let rtcConnection = this._rtcConnection;
+        let rtcConnection = this._rtcConnection;
     
-      // Force our desired bitrate by munging the SDP, and create a session description for it
-      signal.sdp = sessionImplementation._forceBitrateUp(signal.sdp); 
-      const desc = new crossPlatformRTCSessionDescription(signal);
+        // Force our desired bitrate by munging the SDP, and create a session description for it
+        let remoteDescription = {
+          sdp: sessionImplementation._forceBitrateUp(sdp.sdp), 
+          type: sdp.sdpType
+        }
+        const desc = new crossPlatformRTCSessionDescription(remoteDescription);
 
-      // Set the description on the RTC connection, and send and handle the various SDPs
-      rtcConnection.setRemoteDescription(desc)
-      .then(function() {
-        // Create an answer
-       return rtcConnection.createAnswer();
-      })
-      .then(function(answer: any) {
-        // Force stereo on the downstream stream by munging the SDP
-        answer.sdp = sessionImplementation._forceStereoDown(answer.sdp); 
-        RaviUtils.log("Answer:", "RaviWebRTCImplementation");
-        RaviUtils.log(answer, "RaviWebRTCImplementation");
-        // set local description
-        return rtcConnection.setLocalDescription(answer);
-      })
-      .then(function() {
-        const msg = {
-          type: "answer",
-          sdp: rtcConnection.localDescription,
-          uuid: raviSession.getUUID()
-        };
-        const desc = JSON.stringify(msg);
-        RaviUtils.log("Sending answer to server", "RaviWebRTCImplementation");
-        // Send the final result back to the server
-        signalingConnection.send(desc);
-      });
-
-    } else if (signal.ice) {
-      RaviUtils.log("Received remote ICE candidate: " + JSON.stringify(signal.ice), "RaviWebRTCImplementation");
-      if (this._rtcConnection) {
-        this._rtcConnection.addIceCandidate(signal.ice)
+        // Set the description on the RTC connection, and send and handle the various SDPs
+        rtcConnection.setRemoteDescription(desc)
         .then(function() {
-          RaviUtils.log("Added remote candidate", "RaviWebRTCImplementation");
+          // Create an answer
+         return rtcConnection.createAnswer();
         })
-        .catch(function(e: any) {
-          RaviUtils.err("Error attempting to add remote ICE candidate: " + e.message, "RaviWebRTCImplementation");
+        .then(function(answer: any) {
+          // Force stereo on the downstream stream by munging the SDP
+          answer.sdp = sessionImplementation._forceStereoDown(answer.sdp); 
+          RaviUtils.log("Answer:", "RaviWebRTCImplementation");
+          RaviUtils.log(answer, "RaviWebRTCImplementation");
+          // set local description
+          return rtcConnection.setLocalDescription(answer);
+        })
+        .then(function() {
+
+          // Send the final result back to the server
+          var sdpAnswer : SDP = {
+            peerID : RaviUtils.uuidToProtoUUID(raviSession.getUUID()),
+            sdpType : "answer",
+            sdp : rtcConnection.localDescription.sdp
+          };
+          RaviUtils.log("Sending answer to server: " + JSON.stringify(sdpAnswer), "RaviWebRTCImplementation");
+
+          var coordClientMessage: CoordinatorClientMessage = {
+            messageType: CoordinatorClientMessage_MessageType.SDP,
+            messageDetails: {
+              $case: "sdp",
+              sdp : sdpAnswer,
+            }
+          };
+
+          var message = CoordinatorClientMessage.encode(coordClientMessage).finish();
+          signalingConnection.send(message);
         });
-      } else {
-        // TODO: Keep track of ice candidates until we have an rtcConnection
-        RaviUtils.log("Ignore ice candidate until we have an rtcConnection, ice='" + JSON.stringify(signal) + "'", "RaviWebRTCImplementation");
-      }
-    } else {
-      // Some other handler's problem
-      RaviUtils.log("Unknown message " + JSON.stringify(signal), "RaviWebRTCImplementation");
+
+        break;
+      case "iceCandidate":
+        var iceCandidate : IceCandidate = coordinatorMessage.messageDetails.iceCandidate;
+        //var serverID : ServerID = RaviUtils.protoUUIDToUuid(iceCandidate.peerID);
+        RaviUtils.log("Received remote ICE candidate: " + JSON.stringify(iceCandidate), "RaviWebRTCImplementation");
+        //var server : SSMServer = serversByID[ serverID ];
+        //server.ice(iceCandidate.candidate, iceCandidate.sdpMid, iceCandidate.sdpMLineIndex);
+        if (this._rtcConnection) {
+          this._rtcConnection.addIceCandidate(iceCandidate)
+          .then(function() {
+            RaviUtils.log("Added remote candidate", "RaviWebRTCImplementation");
+          })
+          .catch(function(e: any) {
+            RaviUtils.err("Error attempting to add remote ICE candidate: " + e.message, "RaviWebRTCImplementation");
+          });
+        } else {
+          // TODO: Keep track of ice candidates until we have an rtcConnection
+          RaviUtils.log("Ignore ice candidate until we have an rtcConnection, ice='" + JSON.stringify(signal) + "'", "RaviWebRTCImplementation");
+        }
+        break;
+      default:
+        // Some other handler's problem
+        RaviUtils.log("Unknown message " + JSON.stringify(coordinatorMessage.messageDetails), "RaviWebRTCImplementation");
     }
   }
   
