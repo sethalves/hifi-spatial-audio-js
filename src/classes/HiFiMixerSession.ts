@@ -1274,52 +1274,48 @@ export class HiFiMixerSession {
             };
         }
 
-        let dataForMixer = this._getDataToTransmitToMixer(currentHifiAudioAPIData, previousHifiAudioAPIData);
+        // let dataForMixer = this._getDataToTransmitToMixer(currentHifiAudioAPIData, previousHifiAudioAPIData);
 
-        if (Object.keys(dataForMixer).length === 0) {
-            // We call this a "success" even though we didn't send anything to the mixer.
+        let commandController = this._raviSession.getCommandController();
+
+        if (commandController) {
+            // Stringified NaN values get converted to null, which the mixer interprets as unset
+            let dataForMixer = {
+                "x": Math.round(currentHifiAudioAPIData.position.x * 1000),
+                "y": Math.round(currentHifiAudioAPIData.position.y * 1000),
+                "z": Math.round(currentHifiAudioAPIData.position.z * 1000),
+                "facing": currentHifiAudioAPIData.orientation.getYaw()
+            };
+            let stringifiedDataForMixer = JSON.stringify(dataForMixer);
+
+            var setClientPosition : SetClientPosition = {
+                id : RaviUtils.uuidToProtoUUID(this._raviSession.getUUID()),
+                "x": Math.round(currentHifiAudioAPIData.position.x * 1000),
+                "y": Math.round(currentHifiAudioAPIData.position.y * 1000),
+                "facing": Math.PI * currentHifiAudioAPIData.orientation.getYaw() / 180.0
+            };
+
+            var clientMessage: ClientMessage = {
+                messageType: ClientMessage_MessageType.SET_CLIENT_POSITION,
+                requestDetails: {
+                    $case: "setClientPosition",
+                    setClientPosition : setClientPosition
+                }
+            };
+
+            // Encode and send
+            var msg = ClientMessage.encode(clientMessage).finish();
+            commandController.sendInput(msg);
+
             return {
                 success: true,
-                stringifiedDataForMixer: JSON.stringify({})
+                stringifiedDataForMixer: stringifiedDataForMixer
             };
         } else {
-            let commandController = this._raviSession.getCommandController();
-
-            if (commandController) {
-                // Stringified NaN values get converted to null, which the mixer interprets as unset
-                let stringifiedDataForMixer = JSON.stringify(dataForMixer);
-
-                // Turn the data into a protobuf object
-                dataForMixer.id = this._raviSession.getUUID();
-                var setClientPosition : SetClientPosition = SetClientPosition.fromJSON(dataForMixer);
-
-                // Something's up with setting ID in dataForMixer and then passing it into fromJSON --
-                // it ends up not converting the UUID properly. But I'm not quite up to figuring out
-                // what's going on ATM, so just setting it after the fact.
-                setClientPosition.id = RaviUtils.uuidToProtoUUID(this._raviSession.getUUID())
-
-                var clientMessage: ClientMessage = {
-                    messageType: ClientMessage_MessageType.SET_CLIENT_POSITION,
-                    requestDetails: {
-                        $case: "setClientPosition",
-                        setClientPosition : setClientPosition
-                    }
-                };
-
-                // Encode and send
-                var msg = ClientMessage.encode(clientMessage).finish();
-                commandController.sendInput(msg);
-
-                return {
-                    success: true,
-                    stringifiedDataForMixer: stringifiedDataForMixer
-                };
-            } else {
-                return {
-                    success: false,
-                    error: `Can't transmit data to mixer; no \`commandController\`!.`
-                };
-            }
+            return {
+                success: false,
+                error: `Can't transmit data to mixer; no \`commandController\`!.`
+            };
         }
     }
 
