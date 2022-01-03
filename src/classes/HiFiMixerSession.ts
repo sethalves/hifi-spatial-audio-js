@@ -1305,12 +1305,17 @@ export class HiFiMixerSession {
 
             // Encode and send
             var msg = ClientMessage.encode(clientMessage).finish();
-            commandController.sendInput(msg);
-
-            return {
-                success: true,
-                stringifiedDataForMixer: stringifiedDataForMixer
-            };
+            if (commandController.sendInput(msg)) {
+                return {
+                    success: true,
+                    stringifiedDataForMixer: stringifiedDataForMixer
+                };
+            } else {
+                return {
+                    success: false,
+                    error: `Command inputDataChanel not open`
+                };
+            }
         } else {
             return {
                 success: false,

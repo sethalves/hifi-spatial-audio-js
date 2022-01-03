@@ -431,23 +431,23 @@ export class RaviSession {
 
     // Initialize the client position to 0 when the data channel is opened.
     // (TODO: Don't do this. Let the client initialize it to the correct location, or something.)
-    var setClientPosition : SetClientPosition = {
-            id : RaviUtils.uuidToProtoUUID(this.getUUID()),
-            x : 0,
-            y : 0,
-            facing : 0
-    };
+    // var setClientPosition : SetClientPosition = {
+    //         id : RaviUtils.uuidToProtoUUID(this.getUUID()),
+    //         x : 0,
+    //         y : 0,
+    //         facing : 0
+    // };
 
-    var clientMessage: ClientMessage = {
-            messageType: ClientMessage_MessageType.SET_CLIENT_POSITION,
-            requestDetails: {
-                $case: "setClientPosition",
-                setClientPosition : setClientPosition
-            }
-    };
+    // var clientMessage: ClientMessage = {
+    //         messageType: ClientMessage_MessageType.SET_CLIENT_POSITION,
+    //         requestDetails: {
+    //             $case: "setClientPosition",
+    //             setClientPosition : setClientPosition
+    //         }
+    // };
 
-    var msg = ClientMessage.encode(clientMessage).finish();
-    this._commandController.sendInput(msg);
+    // var msg = ClientMessage.encode(clientMessage).finish();
+    // this._commandController.sendInput(msg);
   }
 
   /** 

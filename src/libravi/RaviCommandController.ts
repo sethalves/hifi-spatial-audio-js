@@ -395,12 +395,14 @@ export class RaviCommandController {
    * @param {string} inputEvent An event to send.
    */
   sendInput(inputEvent: any) {
-    if (this._inputDataChannel && this._inputDataChannel.readyState === 'open') {
-      // This gets just WAY too noisy too quickly,
-      // but uncomment if needed:
-      // RaviUtils.log("Sending input:" + JSON.stringify(inputEvent), "RaviCommandController");
-      this._inputDataChannel.send(inputEvent);
-    }
+      if (this._inputDataChannel && this._inputDataChannel.readyState === 'open') {
+          // This gets just WAY too noisy too quickly,
+          // but uncomment if needed:
+          // RaviUtils.log("Sending input:" + JSON.stringify(inputEvent), "RaviCommandController");
+          this._inputDataChannel.send(inputEvent);
+          return true;
+      }
+      return false;
   }
   
   /**
