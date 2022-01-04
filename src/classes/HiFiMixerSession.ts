@@ -1084,6 +1084,9 @@ export class HiFiMixerSession {
                     HiFiLogger.log(`Error encountered while trying to close the connection. Error:\n${RaviUtils.safelyPrintable(errorClosing)}`);
                 }
                 break;
+            case RaviSessionStates.INPUT_CONNECTED:
+                this._onConnectionStateChange(HiFiConnectionStates.InputConnected, { success: true, error: message, disableReconnect: this._disableReconnect });
+                break;
         }
     }).bind(this);
 

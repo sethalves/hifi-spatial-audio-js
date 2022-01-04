@@ -96,7 +96,8 @@ export enum RaviSessionStates {
   COMPLETED = "completed",
   DISCONNECTED = "disconnected",
   FAILED = "failed",
-  CLOSED = "closed"
+  CLOSED = "closed",
+  INPUT_CONNECTED = "input-connected"
 };
 
 /** 
@@ -235,7 +236,7 @@ export class RaviSession {
     }
     return false;
   }
-  
+
   /**
    * Get the RaviCommandController for use with this RaviSession.
    * The {link RaviCommandController} is used to send commands and input to the RAVI server.
@@ -429,25 +430,11 @@ export class RaviSession {
     // it's currently only used for position updates
     this._commandController._setInputDataChannel(event.channel);
 
-    // Initialize the client position to 0 when the data channel is opened.
-    // (TODO: Don't do this. Let the client initialize it to the correct location, or something.)
-    // var setClientPosition : SetClientPosition = {
-    //         id : RaviUtils.uuidToProtoUUID(this.getUUID()),
-    //         x : 0,
-    //         y : 0,
-    //         facing : 0
-    // };
-
-    // var clientMessage: ClientMessage = {
-    //         messageType: ClientMessage_MessageType.SET_CLIENT_POSITION,
-    //         requestDetails: {
-    //             $case: "setClientPosition",
-    //             setClientPosition : setClientPosition
-    //         }
-    // };
-
-    // var msg = ClientMessage.encode(clientMessage).finish();
-    // this._commandController.sendInput(msg);
+    this._stateChangeHandlers.forEach(function(handler) {
+        if (handler) {
+            handler({ "state": RaviSessionStates.INPUT_CONNECTED });
+        }
+    });
   }
 
   /** 

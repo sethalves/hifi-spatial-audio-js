@@ -325,7 +325,7 @@ export class RaviSignalingConnection {
    */
   _handleMessage(message: any) {
     RaviUtils.log("_handleMessage: received message", "RaviSignalingConnection");
-    console.error(message);
+    // console.error(message);
     /*
     RaviUtils.log("_doOnmessage: " + RaviUtils.safelyPrintable(message), "RaviSignalingConnection");
     // This is a special case for when the server side is in an "unavailable" state -- it will

@@ -51,6 +51,9 @@ export enum HiFiConnectionStates {
      * reconnection attempts have completed. If the connection has not been established once all of
      * the reconnection attempts have been tried, the state will then go to `"Failed"` and finally to `"Disconnected"`.
      */
+
+    InputConnected = "InputConnected",
+
     Reconnecting = "Reconnecting",
     /**
      * The `HiFiConnectionState` will be `"Disconnecting"` when the \`disconnectFromHiFiAudioAPIServer()\`
@@ -715,6 +718,11 @@ export class HiFiCommunicator {
                 this._updateStateAndCallUserStateChangeHandler(newState, message);
                 return;
 
+            case HiFiConnectionStates.InputConnected:
+                this._lastTransmittedHiFiAudioAPIData = new HiFiAudioAPIData();
+                this._transmitHiFiAudioAPIDataToServer(true);
+                return;
+
             default:
                 HiFiLogger.error(`_manageConnection called for invalid state change to ${newState}; taking no action.`);
                 return;
@@ -729,12 +737,6 @@ export class HiFiCommunicator {
      * unless there's a really good reason (e.g. `_cancelRetriedConnectionAttempts`)
      */
     private _updateStateAndCallUserStateChangeHandler(newState: HiFiConnectionStates, message?: HiFiConnectionAttemptResult): void {
-        if (newState === HiFiConnectionStates.Connected) {
-            // Always reset last transmitted, and transmit current data as soon as we connect, just to be sure
-            this._lastTransmittedHiFiAudioAPIData = new HiFiAudioAPIData();
-            this._transmitHiFiAudioAPIDataToServer(true);
-        }
-
         // If the new state is different from the current state,
         // change the current state to the new state and call the user's handler.
         if (newState !== this._currentHiFiConnectionState) {
