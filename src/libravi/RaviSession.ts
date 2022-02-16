@@ -32,7 +32,7 @@ import {
 export interface WebRTCSessionParams {
   /**
    * The minimum jitter buffer duration. Units are seconds. The default is 0 seconds.
-   * 
+   *
    * In practice, this should always be set to 0 seconds, which is the default. Setting the minimum jitter buffer duration to X seconds means
    * that all audio sent to the server will always be buffered at least by X seconds. This is rarely desirable; lower latency is almost always preferred.
    * You may, however, want to set the maximum jitter buffer duration if your users are experiencing frequent audio drop-outs; refer to `audioMaxJitterBufferDuration` below for more details.
@@ -40,7 +40,7 @@ export interface WebRTCSessionParams {
   audioMinJitterBufferDuration?: number;
   /**
    * The maximum jitter buffer duration. Units are seconds. The default is 1 second.
-   * 
+   *
    * Set the jitter buffer duration high to reduce the possibility of audio dropouts at the cost
    * of potentially higher round-trip audio latency on poor connections.
    */
@@ -85,7 +85,7 @@ export interface CustomSTUNandTURNConfig {
  * @internal
  * Enum for representing different possible states
  * that a RAVI session might be in.
- * 
+ *
  * @readonly
  * @enum {string}
  */
@@ -100,11 +100,11 @@ export enum RaviSessionStates {
   INPUT_CONNECTED = "input-connected"
 };
 
-/** 
+/**
  * @internal
  * @class
  * @classdesc Represents a communications session between a RAVI JS client and a RAVI server.
- * This class should be instantiated by the RAVI consumer, and then used to open, work with, and close 
+ * This class should be instantiated by the RAVI consumer, and then used to open, work with, and close
  * RAVI sessions as needed.
  *
  */
@@ -113,7 +113,7 @@ export class RaviSession {
    * "Class" variables to be aware of:
    *
    * this._uuid                 // A UUID associated with this particular RaviSession
-   * this._stateChangeHandlers  // A list of handlers to call when something (e.g. state), 
+   * this._stateChangeHandlers  // A list of handlers to call when something (e.g. state),
    *                           // changes, including when a message is received
    *
    * this._raviImplementation   // The implementation of exactly how to implement the RAVI connection (e.g. with WebRTC)
@@ -137,7 +137,7 @@ export class RaviSession {
 
   _resolveOpen: Function; _rejectOpen: Function;
   _resolveClose: Function; _rejectClose: Function;
-  
+
   _openingTimeout: ReturnType<typeof setTimeout>;
 
   /**
@@ -151,17 +151,17 @@ export class RaviSession {
     // Initialize the list of handlers and the UUID
     this._stateChangeHandlers = new Set();
     this._uuid = RaviUtils.createUUID();
-    
+
     // And the command controller and stream controller
     this._commandController = new RaviCommandController();
     this._streamController = new RaviStreamController(this._commandController);
-    
+
     // Initialize the state
     this._state = RaviSessionStates.CLOSED;
-    
+
     // If we wanted to use a different connection implementation,
     // we would new() it here. (TODO: Make this configurable in some
-    // interesting way. For now, it's enough just to make it easily 
+    // interesting way. For now, it's enough just to make it easily
     // swappable in the code here.)
     this._raviImplementation = new RaviWebRTCImplementation(this);
     // When someone sets an input audio stream on the stream controller,
@@ -170,10 +170,10 @@ export class RaviSession {
     this._streamController.setInputAudioChangeHandler(raviImpl._addAudioInputStream.bind(raviImpl));
     this._streamController.setInputVideoChangeHandler(raviImpl._addVideoInputStream.bind(raviImpl));
   }
-  
+
   /**
    * Get the current state of the RAVI session.
-   * 
+   *
    * @returns {RaviSessionStates}
    */
   getState() {
@@ -182,7 +182,7 @@ export class RaviSession {
 
   /**
    * Get the UUID of the session
-   * 
+   *
    * @returns {string}
    */
   getUUID() {
@@ -201,7 +201,7 @@ export class RaviSession {
    * change events.
    * These are stored in a Set of Functions; therefore, a given function
    * can only exist once in this Set.
-   * 
+   *
    * @param {RaviSession~stateChangeCallback} handler A callback handler that should handle a state change event
    * @returns {boolean} Whether or not the add succeeded
    */
@@ -220,7 +220,7 @@ export class RaviSession {
   /**
    * Remove a handler so that it stops listening for state
    * change events.
-   * 
+   *
    * @param {RaviSession~stateChangeCallback} handler A callback handler that has been handling a state change event
    * @returns {boolean} Whether or not the removal was successful (i.e. did not throw an error -- note that this does
    * NOT indicate whether or not the handler was in the set in the first place)
@@ -240,7 +240,7 @@ export class RaviSession {
   /**
    * Get the RaviCommandController for use with this RaviSession.
    * The {link RaviCommandController} is used to send commands and input to the RAVI server.
-   * 
+   *
    * @returns {RaviCommandController}
    */
   getCommandController() {
@@ -250,23 +250,23 @@ export class RaviSession {
   /**
    * Get the RaviStreamController for use with this RaviSession.
    * The {link RaviStreamController} is used to send commands and input to the RAVI server.
-   * 
+   *
    * @returns {RaviStreamController}
    */
   getStreamController() {
     return this._streamController;
   }
-  
+
   /**
    * Open a RAVI connection using the provided RaviSignalingConnection. Returns a Promise
    * that will resolve with the connected state once the RaviSession is connected.
-   * 
+   *
    * @param {Object} __namedParameters
    * @param signalingConnection
    * @param timeout A timout in ms after which to timeout the attempt to connect. Defaults to 5000 (5 seconds).
    * @param params An optional configuration object applied to the server side of the session. The default value is null,
    * meaning that we'll rely on the default values as defined on the server.
-   *            
+   *
    * @returns {Promise}
    */
   openRAVISession({signalingConnection, timeout = 5000, params = null, customStunAndTurn = null}: { signalingConnection: RaviSignalingConnection, timeout?: number, params?: WebRTCSessionParams, customStunAndTurn?: CustomSTUNandTURNConfig}) {
@@ -303,12 +303,12 @@ export class RaviSession {
       raviSession._raviImplementation._open(params, customStunAndTurn);
     });
   }
-  
+
   /**
-   * Close a RAVI connection, including shutting down the 
+   * Close a RAVI connection, including shutting down the
    * relevant RaviStreamController and RaviCommandController. Returns a Promise
    * that will resolve with the closed state once the RaviSession is closed.
-   * 
+   *
    * @param {RaviSignalingConnection} signalingConnection
    *
    * @returns {Promise}
@@ -318,7 +318,7 @@ export class RaviSession {
     if (this._state === RaviSessionStates.CLOSED) return Promise.resolve(
         "RAVI session is already closed."
     );
-   
+
     // Start by closing out command controller
     // and the stream controller.
     this._streamController._stop();
@@ -332,7 +332,7 @@ export class RaviSession {
       raviSession._raviImplementation._close();
     });
   }
-  
+
 
   /**
    * @private
@@ -342,60 +342,60 @@ export class RaviSession {
    * in either the open or close method (or both).
    */
   _fulfillPromises(event: any = {}, state: RaviSessionStates) {
-    let errorMessage = event.reason || event.message || state;
-    switch(state) {
-      case RaviSessionStates.CONNECTED:
-      case RaviSessionStates.COMPLETED:
-        if (this._openingTimeout) {
-            clearTimeout(this._openingTimeout);
-            this._openingTimeout = null;
-        }
-        if (this._resolveOpen) this._resolveOpen();
-        if (this._rejectClose) this._rejectClose(errorMessage);
-        break;
-      case RaviSessionStates.DISCONNECTED:
-        // NOTE: Per https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection#RTCIceConnectionState_enum
-        // "disconnected" is a potentially transient state, so in this case we will simply wait until we
-        // get to connected, complete, or failed.
-        RaviUtils.log("_fulfillPromises: Possible transitory state DISCONNECTED; leaving promises pending", "RaviSession");
-        break;
-      case RaviSessionStates.FAILED:
-        if (this._openingTimeout) {
-            clearTimeout(this._openingTimeout);
-            this._openingTimeout = null;
-        }
-        if (this._rejectOpen) this._rejectOpen(errorMessage);
-        if (this._rejectClose) this._rejectClose(errorMessage);
-        // Explicitly call the implementation's "close" method to make
-        // really, really sure it's closed in addition to being "failed".
-        // These are NOT the same state! A "failed" connection may still be
-        // aware of its signaling connection and other niceties.
-        // Kick off that close in a timeout to get it to run asynchronously
-        // from the Promise rejection.
-        let raviSession = this;
-        const closeTimer = setTimeout(() => {
-            raviSession._raviImplementation._close();
-        }, 0);
-        break;
-      case RaviSessionStates.CLOSED:
-        if (this._openingTimeout) {
-            clearTimeout(this._openingTimeout);
-            this._openingTimeout = null;
-        }
-        if (this._rejectOpen) this._rejectOpen(errorMessage);
-        if (this._resolveClose) this._resolveClose();
-        break;
-      default:
-        // Do nothing for the "in progress" states, like "NEW" or "CONNECTING"
-        RaviUtils.log("_fulfillPromises: Skipping in-progress state " + state, "RaviSession");
-    }
+      let errorMessage = event.reason || event.message || state;
+      switch(state) {
+          case RaviSessionStates.CONNECTED:
+          case RaviSessionStates.COMPLETED:
+              if (this._openingTimeout) {
+                  clearTimeout(this._openingTimeout);
+                  this._openingTimeout = null;
+              }
+              if (this._resolveOpen) this._resolveOpen();
+              if (this._rejectClose) this._rejectClose(errorMessage);
+              break;
+          case RaviSessionStates.DISCONNECTED:
+              // NOTE: Per https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection#RTCIceConnectionState_enum
+              // "disconnected" is a potentially transient state, so in this case we will simply wait until we
+              // get to connected, complete, or failed.
+              RaviUtils.log("_fulfillPromises: Possible transitory state DISCONNECTED; leaving promises pending", "RaviSession");
+              break;
+          case RaviSessionStates.FAILED:
+              if (this._openingTimeout) {
+                  clearTimeout(this._openingTimeout);
+                  this._openingTimeout = null;
+              }
+              if (this._rejectOpen) this._rejectOpen(errorMessage);
+              if (this._rejectClose) this._rejectClose(errorMessage);
+              // Explicitly call the implementation's "close" method to make
+              // really, really sure it's closed in addition to being "failed".
+              // These are NOT the same state! A "failed" connection may still be
+              // aware of its signaling connection and other niceties.
+              // Kick off that close in a timeout to get it to run asynchronously
+              // from the Promise rejection.
+              let raviSession = this;
+              const closeTimer = setTimeout(() => {
+                  raviSession._raviImplementation._close();
+              }, 0);
+              break;
+          case RaviSessionStates.CLOSED:
+              if (this._openingTimeout) {
+                  clearTimeout(this._openingTimeout);
+                  this._openingTimeout = null;
+              }
+              if (this._rejectOpen) this._rejectOpen(errorMessage);
+              if (this._resolveClose) this._resolveClose();
+              break;
+          default:
+              // Do nothing for the "in progress" states, like "NEW" or "CONNECTING"
+              RaviUtils.log("_fulfillPromises: Skipping in-progress state " + state, "RaviSession");
+      }
   }
-  
-  
-  
+
+
+
   /**
    * Handler for whenever a new "track channel" shows up. (When this event happens
-   * should be determined by the implementation, and information about the track should be 
+   * should be determined by the implementation, and information about the track should be
    * stored in the passed event object.)
    * @private
    */
@@ -405,18 +405,18 @@ export class RaviSession {
     RaviUtils.log("Received new track: ", "RaviSession");
     RaviUtils.log(event, "RaviSession");
 
-    if (event && event.track && event.track.kind === "video") { 
+    if (event && event.track && event.track.kind === "video") {
       RaviUtils.log("Adding remote video track to stream controller", "RaviSession");
       this._streamController._setVideoStream(event.streams[0]);
       this._streamController._onVideoStreamStateChanged("ready");
     }
-    
+
     if (event && event.track && event.track.kind === "audio") {
       RaviUtils.log("Adding remote audio track to stream controller", "RaviSession");
       this._streamController._setAudioStream(event.streams[0]);
     }
   }
-  
+
   /**
    * Handler for whenever a new "data channel" shows up. (When this event happens should be determined
    * by the implementation, and information about the channel should be stored in the passed event object.)
@@ -425,7 +425,7 @@ export class RaviSession {
   _doOndatachannel(event: any) {
     RaviUtils.log("Received new channel: ", "RaviSession");
     RaviUtils.log(event, "RaviSession");
-    
+
     // Only one channel for SSM; use it as the input channel because
     // it's currently only used for position updates
     this._commandController._setInputDataChannel(event.channel);
@@ -437,27 +437,27 @@ export class RaviSession {
     });
   }
 
-  /** 
-   * Generic handler 
+  /**
+   * Generic handler
    * @private
    */
   _handleStateChange(event: any = {}, state: RaviSessionStates) {
-    event["state"] = state;
+      event["state"] = state;
 
-    // Always try to fulfill any open promises, even if the state hasn't changed
-    this._fulfillPromises(event, state);
+      // Always try to fulfill any open promises, even if the state hasn't changed
+      this._fulfillPromises(event, state);
 
-    // But only call handlers if the state did, in fact, change
-    if (state !== this._state) {
-        this._state = state;
-        event["state"] = state;
-        RaviUtils.log("_handleStateChange: " + RaviUtils.safelyPrintable(event), "RaviSession");
-        this._stateChangeHandlers.forEach(function(handler) {
-          if (handler) {
-            handler(event);
-          }
-        });
-    }
+      // But only call handlers if the state did, in fact, change
+      if (state !== this._state) {
+          this._state = state;
+          event["state"] = state;
+          RaviUtils.log("_handleStateChange: " + RaviUtils.safelyPrintable(event), "RaviSession");
+          this._stateChangeHandlers.forEach(function(handler) {
+              if (handler) {
+                  handler(event);
+              }
+          });
+      }
   }
 
    /**
@@ -470,7 +470,7 @@ export class RaviSession {
    * Add a handler that will be used to listen for new stats generated.
    * These are stored in a Set of Functions; therefore, a given function
    * can only exist once in this Set.
-   * 
+   *
    * @param {RaviSession~statsObserverCallback} handler A callback handler that should handle a state change event
    * @returns {boolean} Whether or not the add succeeded
    */
@@ -480,7 +480,7 @@ export class RaviSession {
 
   /**
    * Remove a handler so that it stops listening for stats updates.
-   * 
+   *
    * @param {RaviSession~statsObserverCallback} handler A callback handler that should handle a state change event
    * @returns {boolean} Whether or not the removal was successful (i.e. did not throw an error -- note that this does
    * NOT indicate whether or not the handler was in the set in the first place)
@@ -488,7 +488,7 @@ export class RaviSession {
   removeStatsObserver(observer: Function) {
     return this._raviImplementation._removeStatsObserver(observer);
   }
-  
+
 } // End of the RaviSession class
 
 /*************************************************************************** */
@@ -520,7 +520,7 @@ class RaviWebRTCStatsWatcher {
   _interval: number;
   _prevStats: Array<any>;
 
-  
+
   /**
    * "Class" variables to be aware of:
    * this._observers is the set of observer callbacks registered by user code
@@ -538,7 +538,7 @@ class RaviWebRTCStatsWatcher {
     this._observers = new Set();
     this._filter = STATS_WATCHER_FILTER;
     this._interval = 0;
-    this._prevStats = []; 
+    this._prevStats = [];
   }
 
   /**
@@ -555,12 +555,12 @@ class RaviWebRTCStatsWatcher {
    * Add an observer that will be used to listen for new stats generated.
    * These are stored in a Set of Functions; therefore, a given function
    * can only exist once in this Set.
-   * 
+   *
    * statsObserverCallback function receives 2 parameters, the current record and the previous record.
    * function(newStats, prevStats)
-   * the Stats parameter is an Array of objects, a filtered down version of the dictionnaries returned by 
+   * the Stats parameter is an Array of objects, a filtered down version of the dictionnaries returned by
    * RTCPeerConnection.getStats
-   * 
+   *
    * @param {RaviStatsWatcher~statsObserverCallback} observer A callback which will receive the stats samples
    * @returns {boolean} Whether or not the add succeeded
    */
@@ -579,7 +579,7 @@ class RaviWebRTCStatsWatcher {
 
   /**
    * Remove an observer so that it stops listening for stats updates.
-   * 
+   *
    * @param {RaviSession~statsObserverCallback} observer A callback to be removed from the set
    * @returns {boolean} Whether or not the removal was successful (i.e. did not throw an error -- note that this does
    * NOT indicate whether or not the handler was in the set in the first place)
@@ -597,7 +597,7 @@ class RaviWebRTCStatsWatcher {
     return false;
   }
 
-  
+
   // Whenever observer(s) are added or remove,
   // let's make sure the watcher is running if there is any observer.
   // and let's turn off the collection of stats if the set of observers is empty.
@@ -610,7 +610,7 @@ class RaviWebRTCStatsWatcher {
       if (!this._interval) {
         setInterval(async (handler: any, timeout: any) => {
           const stats = await this._raviImplementation._getStats();
-          
+
           let filteredStats:any = [];
           if (stats) {
             stats.forEach((report: any) => {
@@ -618,7 +618,7 @@ class RaviWebRTCStatsWatcher {
               if (this._filter.has(report.type)) {
                 // selected fields must be a valid array of fields:
                 let selectedFields = this._filter.get(report.type);
-                
+
                 // Then within the report type, pick on the wanted fields
                 let filteredReport: any = {};
                 selectedFields.forEach(key => {
@@ -630,7 +630,7 @@ class RaviWebRTCStatsWatcher {
               }
             });
           }
-          
+
           // Stats have been collected, now let's broadcast
           if (filteredStats.length) {
             this._observers.forEach ((observer)=>{
@@ -659,8 +659,8 @@ class RaviWebRTCStatsWatcher {
 TODO: Add information about what a RAVI Peer Connection "connection implementation"
 class should look like. Some initial notes:
 Constructor: Takes in a RaviSession so that it can use its handlers. The implementation class
-is expected to assign the RaviSession's _handleStateChange(event, state) 
-handler to any appropriate events thrown by its implementation 
+is expected to assign the RaviSession's _handleStateChange(event, state)
+handler to any appropriate events thrown by its implementation
 (and/or thrown by itself).
 Similarly, it is expected to call the parent's _doOndatachannel and _doOntrack
 methods when it has data channel and track channels ready.
@@ -669,13 +669,13 @@ methods when it has data channel and track channels ready.
   _assignSignalingConnection();
   _addAudioInputStream(inputStream);
   _addVideoInputStream(inputStream);
-  _open(); 
+  _open();
   _close();
 */
 
 /**
  * @internal
- * Use the correct classes depending on whether we're being 
+ * Use the correct classes depending on whether we're being
  * called from node or the browser.
  */
 let crossPlatformRTCPeerConnection:any = null;
@@ -709,7 +709,7 @@ let peerConnectionConfig = {
   ]
 };
 
-/** 
+/**
  * @internal
  * A WebRTC implementation for a RAVI peer connection
  * @private
@@ -723,7 +723,7 @@ class RaviWebRTCImplementation {
   _raviVideoSenders: any;
   _signalingConnection: RaviSignalingConnection;
   _customStunAndTurn: CustomSTUNandTURNConfig;
-  
+
   // Need to keep track of the input streams in case they get set
   // before the actual RTC connection is available.
   _audioInputStream: MediaStream;
@@ -751,7 +751,7 @@ class RaviWebRTCImplementation {
     this._raviAudioSenders = [];
     this._raviVideoSenders = [];
   }
-  
+
   /**
    * Initialize the RTC connection to a new fresh one. This gets called once we
    * have received the initial SDP from the server (so that we can attach
@@ -762,11 +762,11 @@ class RaviWebRTCImplementation {
   _initRtcConnection() {
     const raviSession = this._raviSession;
     const sessionImplementation = this;
-    
+
     // Create a new RTC connection (for node or the browser)
     this._rtcConnection = new crossPlatformRTCPeerConnection(peerConnectionConfig);
     const rtcConnection = this._rtcConnection;
-    
+
     // Clear out any old track senders
     let senders = rtcConnection.getSenders();
     senders.forEach((sender: any) => {
@@ -774,28 +774,28 @@ class RaviWebRTCImplementation {
     });
     this._raviAudioSenders = [];
     this._raviVideoSenders = [];
-    
+
     // This new RTCConnection's state change events will just
-    // call back up to the main RaviSession's 
+    // call back up to the main RaviSession's
     // stateChangeHandlers.
-    // NOTE: Take a look at BIGWORLD-1062 and the difference between 
+    // NOTE: Take a look at BIGWORLD-1062 and the difference between
     // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection#RTCIceConnectionState_enum
     // and
     // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection#RTCPeerConnectionState_enum
     // to see why we're listening on iceconnectionstatechange instead of peerconnectionstatechange
-    rtcConnection.addEventListener('iceconnectionstatechange', function(event: any) { 
-      if (rtcConnection.iceConnectionState === "connected" || rtcConnection.iceConnectionState == "completed") {
-        RaviUtils.log("Session has fully connected; removing short-circuit handler", "RaviWebRTCImplementation");
-        sessionImplementation._signalingConnection.removeStateChangeHandler(sessionImplementation._shortCircuitHandler);
-      }
-      raviSession._handleStateChange(event, rtcConnection.iceConnectionState); 
+    rtcConnection.addEventListener('iceconnectionstatechange', function(event: any) {
+        if (rtcConnection.iceConnectionState === "connected" || rtcConnection.iceConnectionState == "completed") {
+            RaviUtils.log("Session has fully connected; removing short-circuit handler", "RaviWebRTCImplementation");
+            sessionImplementation._signalingConnection.removeStateChangeHandler(sessionImplementation._shortCircuitHandler);
+        }
+        raviSession._handleStateChange(event, rtcConnection.iceConnectionState);
     });
 
     // Similiarly, listen at the RaviSession level for track and data channel events
     rtcConnection.addEventListener('datachannel', function(event: any) { raviSession._doOndatachannel(event); });
     rtcConnection.addEventListener('track', function(event: any) { raviSession._doOntrack(event); });
 
-    // However, we need to listen at our own RTC implementation level for ice candidate events, 
+    // However, we need to listen at our own RTC implementation level for ice candidate events,
     // because they're part of the session negotiation
     rtcConnection.addEventListener('icecandidate', function(event: any) { sessionImplementation._doOnicecandidate(event); });
 
@@ -807,23 +807,23 @@ class RaviWebRTCImplementation {
     rtcConnection.addEventListener("signalingstatechange", function(event: any) { sessionImplementation._doOnsignalingstatechanged(event); });
 
   }
-  
+
   /**
    * Tell this RaviWebRTCImplementation what RaviSignalingConnection to use.
    *
-   * This method is called by the owning RaviSession. 
+   * This method is called by the owning RaviSession.
    * @protected
    */
   _assignSignalingConnection(signalingConnection: RaviSignalingConnection) {
     this._signalingConnection = signalingConnection;
   }
-  
+
   /**
    * Add an input stream to this connection. (This can be done at
    * any point during the connection, which is why it's a separate method.)
-   * 
+   *
    * This method is called by the owning RaviSession when its stream controller
-   * gets an input stream. 
+   * gets an input stream.
    * @protected
    */
   _addAudioInputStream(stream: MediaStream) {
@@ -840,10 +840,10 @@ class RaviWebRTCImplementation {
 
       // We keep track of the senders that we interact with
       // separately from the list of senders on the RTC connection,
-      // because we want to make sure we're only working with 
+      // because we want to make sure we're only working with
       // senders that match our own parameters.
       const currentSenders = this._raviAudioSenders;
-      
+
       // List of new tracks in the passed stream
       const newAudioTracks = stream.getAudioTracks();
       const numNewTracks = newAudioTracks.length;
@@ -860,7 +860,7 @@ class RaviWebRTCImplementation {
           currentSenders[i].replaceTrack(newAudioTracks[i]);
         } else {
           // If there are more tracks in the old stream than
-          // in the new one, set the extras to null 
+          // in the new one, set the extras to null
           RaviUtils.log("Setting audio sender #" + i + " to null", "RaviWebRTCImplementation");
           currentSenders[i].replaceTrack(null);
         }
@@ -901,14 +901,14 @@ class RaviWebRTCImplementation {
 
       // We keep track of the senders that we interact with
       // separately from the list of senders on the RTC connection,
-      // because we want to make sure we're only working with 
+      // because we want to make sure we're only working with
       // senders that match our own parameters.
       const currentSenders = this._raviVideoSenders;
-      
+
       // List of new tracks in the passed stream
       const newVideoTracks = stream.getVideoTracks();
       const numNewTracks = newVideoTracks.length;
-      
+
       // At the moment, ravi client session only support one outbound video track
       if (numNewTracks > 0) {
         // If current video sender exists already, just replace track
@@ -924,7 +924,7 @@ class RaviWebRTCImplementation {
         retval = true;
       } else {
         RaviUtils.log("Assigned video stream doesn't contain vidoe track", "RaviWebRTCImplementation");
-      }             
+      }
     } else {
       // the stream assigned is null meaning we want to kill any input video stream
       const currentSenders = this._raviVideoSenders;
@@ -941,10 +941,10 @@ class RaviWebRTCImplementation {
 
   /**
    * Open a session. This implementation does this by adding a handler to the signalingConnection
-   * that will listen for "ready to negotiate connection" messages so that the 
+   * that will listen for "ready to negotiate connection" messages so that the
    * _setupConnection method can then negotiate the connection.
    *
-   * This method is called by the owning RaviSession. 
+   * This method is called by the owning RaviSession.
    * @protected
    */
   _open(params: WebRTCSessionParams, customStunAndTurn: CustomSTUNandTURNConfig) {
@@ -955,22 +955,22 @@ class RaviWebRTCImplementation {
             || this._rtcConnection.connectionState == 'connected'))
     {
       RaviUtils.log("We already have a connection in progress. Will not attempt a new one.", "RaviWebRTCImplementation");
-      // Trigger state change handler on the owning session to finalize any 
+      // Trigger state change handler on the owning session to finalize any
       // residual Promises
-      this._raviSession._handleStateChange({"state":this._rtcConnection.connectionState}, this._rtcConnection.connectionState); 
+      this._raviSession._handleStateChange({"state":this._rtcConnection.connectionState}, this._rtcConnection.connectionState);
       return;
     }
 
     if (this._signalingConnection) {
       // Add a handler for state change events onto the provided
-      // signaling connection. This should listen for the appropriate 
+      // signaling connection. This should listen for the appropriate
       // "ready to negotiate connection" message from the signaling connection.
       this._signalingConnection.addMessageHandler(this._negotiator);
-      
+
       // Add a state change handler to the signaling connection. If the
       // connection closes or fails _while we're in the process of negotiating
       // the connection_ (i.e. before the connection is fully open), we should stop trying.
-      // We remove this handler once the WebRTC connection is fully open, because if the 
+      // We remove this handler once the WebRTC connection is fully open, because if the
       // signaling connection closes _after_ we've got a stable connection, we want to
       // leave our webrtc connection open as long as possible.
       this._shortCircuitHandler = this._cancelOpeningProcessOnSignalingDisconnect.bind(this);
@@ -1031,12 +1031,12 @@ class RaviWebRTCImplementation {
         RaviUtils.log("Signaling state has changed during opening of RAVI session, but is an OK change. New state: " + state, "RaviWebRTCImplementation");
     }
   }
-  
-  
+
+
   /**
    * Close a session.
    *
-   * This method is called by the owning RaviSession. 
+   * This method is called by the owning RaviSession.
    * Note: This method ALWAYS goes through its cleanup process,
    * even if there isn't an underlying RTC connection or the underlying
    * RTC connection is already closed. This is to make sure that other things
@@ -1050,7 +1050,7 @@ class RaviWebRTCImplementation {
     RaviUtils.log("closing", "RaviWebRTCImplementation");
 
     if (this._rtcConnection) {
-      this._rtcConnection.close();    
+      this._rtcConnection.close();
     }
 
     // Remove our session-negotiating message handler from the signaling connection
@@ -1071,7 +1071,7 @@ class RaviWebRTCImplementation {
 
   /**
    * Used to send local ICE candidate proposals to the server.
-   * 
+   *
    * @private
    */
   _doOnicecandidate(event: any) {
@@ -1081,7 +1081,7 @@ class RaviWebRTCImplementation {
       // Note: need to convert event.candidate to a string to placate node.
       var iceCandidate : IceCandidate = {
         peerID : RaviUtils.uuidToProtoUUID(this._raviSession.getUUID()),
-        candidate: event.candidate.toString(),
+        candidate: event.candidate.candidate,
         sdpMid : event.candidate.sdpMid,
         sdpMLineIndex: event.candidate.sdpMLineIndex
       };
@@ -1104,7 +1104,7 @@ class RaviWebRTCImplementation {
 
   /**
    * Handle renegotiation when needed.
-   * 
+   *
    * @private
    */
   _doOnnegotiationneeded(event: any) {
@@ -1114,7 +1114,7 @@ class RaviWebRTCImplementation {
       uuid: this._raviSession.getUUID()
     };
     const desc = JSON.stringify(msg);
-   
+
     // negotiation needed but only if we are not already currently negotiating
     if (this._signalingConnection && this._rtcConnection && this._rtcConnection.signalingState === "stable") {
       this._signalingConnection.send(desc);
@@ -1123,7 +1123,7 @@ class RaviWebRTCImplementation {
 
   /**
    * Handle signaling state change.
-   * 
+   *
    * @private
    */
   _doOnsignalingstatechanged(event: any) {
@@ -1137,7 +1137,7 @@ class RaviWebRTCImplementation {
    * @private
    */
   _forceBitrateUp(sdp: string) {
-    // Need to format the SDP differently if the input is stereo, so 
+    // Need to format the SDP differently if the input is stereo, so
     // reach up into our owner's stream controller to find out.
     const localAudioIsStereo = this._raviSession._streamController.isStereoInput();
     // Use 128kbps for stereo upstream audio, 64kbps for mono
@@ -1146,7 +1146,7 @@ class RaviWebRTCImplementation {
     // SDP munging: use 128kbps for stereo upstream audio, 64kbps for mono
     return sdp.replace(/a=fmtp:111 /g, 'a=fmtp:111 maxaveragebitrate='+bitrate+';');
   }
-  
+
   /**
    * @private
    */
@@ -1165,18 +1165,18 @@ class RaviWebRTCImplementation {
     let fullMessage:any = "";
     let signal:any = "";
 
-    
+
     // Local copies of useful variables to avoid having to bind
     const raviSession = this._raviSession;
     const signalingConnection = this._signalingConnection;
     const sessionImplementation = this;
-    
+
     // Just in case, make sure we have everything we need
     if (!raviSession || !signalingConnection) {
       RaviUtils.err("Missing one of raviSession or signalingConnection! Can't set up connection.", "RaviWebRTCImplementation");
       return;
     }
-    
+
     // Make sure we have a message, and that it's for this particular RAVI session
     /*
     if (event && event.data) {
@@ -1251,10 +1251,10 @@ class RaviWebRTCImplementation {
           }
         }
         let rtcConnection = this._rtcConnection;
-    
+
         // Force our desired bitrate by munging the SDP, and create a session description for it
         let remoteDescription = {
-          sdp: sessionImplementation._forceBitrateUp(sdp.sdp), 
+          sdp: sessionImplementation._forceBitrateUp(sdp.sdp),
           type: sdp.sdpType
         }
         const desc = new crossPlatformRTCSessionDescription(remoteDescription);
@@ -1267,7 +1267,7 @@ class RaviWebRTCImplementation {
         })
         .then(function(answer: any) {
           // Force stereo on the downstream stream by munging the SDP
-          answer.sdp = sessionImplementation._forceStereoDown(answer.sdp); 
+          answer.sdp = sessionImplementation._forceStereoDown(answer.sdp);
           RaviUtils.log("Answer:", "RaviWebRTCImplementation");
           RaviUtils.log(answer, "RaviWebRTCImplementation");
           // set local description
@@ -1320,12 +1320,12 @@ class RaviWebRTCImplementation {
         RaviUtils.log("Unknown message " + JSON.stringify(coordinatorMessage.messageDetails), "RaviWebRTCImplementation");
     }
   }
-  
+
   /**
    * Add a handler that will be used to listen for new stats generated.
    * These are stored in a Set of Functions; therefore, a given function
    * can only exist once in this Set.
-   * 
+   *
    * @private
    * @param {RaviSession~statsObserverCallback} handler A callback handler that should handle a state change event
    * @returns {boolean} Whether or not the add succeeded
@@ -1336,7 +1336,7 @@ class RaviWebRTCImplementation {
 
   /**
    * Remove a handler so that it stops listening for stats updates.
-   * 
+   *
    * @private
    * @param {RaviSession~statsObserverCallback} handler A callback handler that should handle a state change event
    * @returns {boolean} Whether or not the removal was successful (i.e. did not throw an error -- note that this does

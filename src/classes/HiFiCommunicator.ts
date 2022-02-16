@@ -480,6 +480,8 @@ export class HiFiCommunicator {
             signalingHostURLSafe = signalingHostURL ? signalingHostURL : HiFiConstants.DEFAULT_PROD_HIGH_FIDELITY_ENDPOINT;
         }
 
+        HiFiLogger.log("signalingHostURL is " + signalingHostURLSafe);
+
         // if reconnections are enabled, attempt them if necessary.
         this._mixerSession._disableReconnect  = false;
 

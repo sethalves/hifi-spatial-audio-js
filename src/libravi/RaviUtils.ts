@@ -109,7 +109,7 @@ export class RaviUtils {
    * @static
    */
   static setDebug(debug: boolean) {
-    DEBUG = debug;
+      DEBUG = debug;
   }
 
 }

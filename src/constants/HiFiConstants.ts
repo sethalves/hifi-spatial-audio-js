@@ -25,7 +25,7 @@ export class HiFiConstants {
     /**
      * The default port for signaling connections to our High Fidelity audio servers.
      */
-    static DEFAULT_PROD_HIGH_FIDELITY_PORT: number = 443;
+    static DEFAULT_PROD_HIGH_FIDELITY_PORT: number = 8989;
     /**
      * The default settings for handling connection timeouts and retries.
      * See {@link ConnectionRetryAndTimeoutConfig}
