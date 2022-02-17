@@ -1108,17 +1108,22 @@ class RaviWebRTCImplementation {
    * @private
    */
   _doOnnegotiationneeded(event: any) {
-    RaviUtils.log("need renegotiation please", "RaviWebRTCImplementation");
-    const msg = {
-      renegotiate: "please",
-      uuid: this._raviSession.getUUID()
-    };
-    const desc = JSON.stringify(msg);
-
-    // negotiation needed but only if we are not already currently negotiating
-    if (this._signalingConnection && this._rtcConnection && this._rtcConnection.signalingState === "stable") {
-      this._signalingConnection.send(desc);
-    }
+      RaviUtils.log("need renegotiation please", "RaviWebRTCImplementation");
+      // negotiation needed but only if we are not already currently negotiating
+      if (this._signalingConnection && this._rtcConnection && this._rtcConnection.signalingState === "stable") {
+          var requestRTCRenegotiationMsg : RequestRTCRenegotiation = {
+              peerID : RaviUtils.uuidToProtoUUID(this._raviSession.getUUID())
+          };
+          var coordClientMessage: CoordinatorClientMessage = {
+              messageType: CoordinatorClientMessage_MessageType.REQUEST_RTC_RENEGOTIATION,
+              messageDetails: {
+                  $case: "requestRTCRenegotiation",
+                  requestRTCRenegotiation : requestRTCRenegotiationMsg,
+              }
+          };
+          var msg = CoordinatorClientMessage.encode(coordClientMessage).finish();
+          this._signalingConnection.send(msg);
+      }
   }
 
   /**
