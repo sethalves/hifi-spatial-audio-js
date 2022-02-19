@@ -1296,7 +1296,7 @@ export class HiFiMixerSession {
                 id : RaviUtils.uuidToProtoUUID(this._raviSession.getUUID()),
                 "x": Math.round(currentHifiAudioAPIData.position.x * 1000),
                 "y": Math.round(currentHifiAudioAPIData.position.z * 1000), // client code expects Y to be up
-                "facing": Math.PI * currentHifiAudioAPIData.orientation.getYaw() / 180.0
+                "facing": (Math.PI / 2) - (Math.PI * currentHifiAudioAPIData.orientation.getYaw() / 180.0)
             };
 
             var clientMessage: ClientMessage = {
