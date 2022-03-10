@@ -22,7 +22,12 @@ import pako from 'pako'
 import {
     ClientMessage,
     ClientMessage_MessageType,
-    SetClientPosition
+    SetClientData,
+
+    ServerMessage,
+    ClientUpdates,
+    DisconnectClient,
+    ClientPosition
 } from "../libravi/ssm";
 
 const isBrowser = typeof window !== 'undefined';
@@ -321,7 +326,7 @@ export class HiFiMixerSession {
         this._disableReconnect = false;
         this._coordFrameUtil = coordFrameUtil;
 
-        RaviUtils.setDebug(false);
+        RaviUtils.setDebug(true);
 
         this._raviSignalingConnection = new RaviSignalingConnection();
         this._raviSession = new RaviSession();
@@ -400,7 +405,19 @@ export class HiFiMixerSession {
      * @param data The `gzipped` data from the Mixer.
      */
     handleRAVISessionBinaryData(data: any) {
-        console.log("XXX received binary data-channel data from server")
+        var serverMessage = ServerMessage.decode(new Uint8Array(data));
+        switch(serverMessage.messageDetails.$case) {
+
+            case "clientUpdates":
+                console.log("XXX got clientUpdates");
+                break;
+
+            case "disconnectClient":
+                console.log("XXX got disconnectClient");
+                break;
+        }
+
+
         // let unGZippedData = pako.ungzip(data, { to: 'string' });
         // let jsonData = JSON.parse(unGZippedData);
 
@@ -1292,18 +1309,20 @@ export class HiFiMixerSession {
             };
             let stringifiedDataForMixer = JSON.stringify(dataForMixer);
 
-            var setClientPosition : SetClientPosition = {
+            var setClientData : SetClientData = {
                 id : RaviUtils.uuidToProtoUUID(this._raviSession.getUUID()),
-                "x": Math.round(currentHifiAudioAPIData.position.x * 1000),
-                "y": Math.round(currentHifiAudioAPIData.position.z * 1000), // client code expects Y to be up
-                "facing": (Math.PI / 2) - (Math.PI * currentHifiAudioAPIData.orientation.getYaw() / 180.0)
+                clientPosition : {
+                    "x": Math.round(currentHifiAudioAPIData.position.x * 1000),
+                    "y": Math.round(currentHifiAudioAPIData.position.z * 1000), // client code expects Y to be up
+                    "facing": (Math.PI / 2) - (Math.PI * currentHifiAudioAPIData.orientation.getYaw() / 180.0)
+                }
             };
 
             var clientMessage: ClientMessage = {
-                messageType: ClientMessage_MessageType.SET_CLIENT_POSITION,
+                messageType: ClientMessage_MessageType.SET_CLIENT_DATA,
                 requestDetails: {
-                    $case: "setClientPosition",
-                    setClientPosition : setClientPosition
+                    $case: "setClientData",
+                    setClientData : setClientData
                 }
             };
 

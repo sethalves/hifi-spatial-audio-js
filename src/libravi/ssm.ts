@@ -8,11 +8,22 @@ export interface Uuid {
   value: Uint8Array;
 }
 
-export interface SetClientPosition {
-  id: Uuid | undefined;
+export interface ClientPosition {
+  /** millimeters */
   x: number;
   y: number;
+  /** radians */
   facing: number;
+}
+
+export interface SetClientData {
+  id: Uuid | undefined;
+  clientPosition?: ClientPosition | undefined;
+  volume?: number | undefined;
+}
+
+export interface DisconnectClient {
+  id: Uuid | undefined;
 }
 
 export interface KillServerRequest {}
@@ -24,13 +35,13 @@ export interface LogToServer {
 export interface ClientMessage {
   messageType: ClientMessage_MessageType;
   requestDetails?:
-    | { $case: "setClientPosition"; setClientPosition: SetClientPosition }
+    | { $case: "setClientData"; setClientData: SetClientData }
     | { $case: "killServerRequest"; killServerRequest: KillServerRequest }
     | { $case: "logToServer"; logToServer: LogToServer };
 }
 
 export enum ClientMessage_MessageType {
-  SET_CLIENT_POSITION = 0,
+  SET_CLIENT_DATA = 0,
   KILL_SERVER_REQUEST = 1,
   LOG_TO_SERVER = 2,
   UNRECOGNIZED = -1,
@@ -41,8 +52,8 @@ export function clientMessage_MessageTypeFromJSON(
 ): ClientMessage_MessageType {
   switch (object) {
     case 0:
-    case "SET_CLIENT_POSITION":
-      return ClientMessage_MessageType.SET_CLIENT_POSITION;
+    case "SET_CLIENT_DATA":
+      return ClientMessage_MessageType.SET_CLIENT_DATA;
     case 1:
     case "KILL_SERVER_REQUEST":
       return ClientMessage_MessageType.KILL_SERVER_REQUEST;
@@ -60,8 +71,8 @@ export function clientMessage_MessageTypeToJSON(
   object: ClientMessage_MessageType
 ): string {
   switch (object) {
-    case ClientMessage_MessageType.SET_CLIENT_POSITION:
-      return "SET_CLIENT_POSITION";
+    case ClientMessage_MessageType.SET_CLIENT_DATA:
+      return "SET_CLIENT_DATA";
     case ClientMessage_MessageType.KILL_SERVER_REQUEST:
       return "KILL_SERVER_REQUEST";
     case ClientMessage_MessageType.LOG_TO_SERVER:
@@ -71,13 +82,20 @@ export function clientMessage_MessageTypeToJSON(
   }
 }
 
+export interface ClientUpdates {
+  clientData: SetClientData[];
+}
+
 export interface ServerMessage {
   messageType: ServerMessage_MessageType;
-  encodedMessage: Uint8Array;
+  messageDetails?:
+    | { $case: "clientUpdates"; clientUpdates: ClientUpdates }
+    | { $case: "disconnectClient"; disconnectClient: DisconnectClient };
 }
 
 export enum ServerMessage_MessageType {
-  TELL_CLIENT_ABOUT_MIXER = 0,
+  UPDATE_CLIENTS = 0,
+  DISCONNECT_CLIENT = 1,
   UNRECOGNIZED = -1,
 }
 
@@ -86,8 +104,11 @@ export function serverMessage_MessageTypeFromJSON(
 ): ServerMessage_MessageType {
   switch (object) {
     case 0:
-    case "TELL_CLIENT_ABOUT_MIXER":
-      return ServerMessage_MessageType.TELL_CLIENT_ABOUT_MIXER;
+    case "UPDATE_CLIENTS":
+      return ServerMessage_MessageType.UPDATE_CLIENTS;
+    case 1:
+    case "DISCONNECT_CLIENT":
+      return ServerMessage_MessageType.DISCONNECT_CLIENT;
     case -1:
     case "UNRECOGNIZED":
     default:
@@ -99,8 +120,10 @@ export function serverMessage_MessageTypeToJSON(
   object: ServerMessage_MessageType
 ): string {
   switch (object) {
-    case ServerMessage_MessageType.TELL_CLIENT_ABOUT_MIXER:
-      return "TELL_CLIENT_ABOUT_MIXER";
+    case ServerMessage_MessageType.UPDATE_CLIENTS:
+      return "UPDATE_CLIENTS";
+    case ServerMessage_MessageType.DISCONNECT_CLIENT:
+      return "DISCONNECT_CLIENT";
     default:
       return "UNKNOWN";
   }
@@ -286,7 +309,9 @@ export function coordinatorClientMessage_MessageTypeToJSON(
   }
 }
 
-const baseUuid: object = {};
+function createBaseUuid(): Uuid {
+  return { value: new Uint8Array() };
+}
 
 export const Uuid = {
   encode(message: Uuid, writer: Writer = Writer.create()): Writer {
@@ -299,8 +324,7 @@ export const Uuid = {
   decode(input: Reader | Uint8Array, length?: number): Uuid {
     const reader = input instanceof Reader ? input : new Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseUuid } as Uuid;
-    message.value = new Uint8Array();
+    const message = createBaseUuid();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -316,12 +340,11 @@ export const Uuid = {
   },
 
   fromJSON(object: any): Uuid {
-    const message = { ...baseUuid } as Uuid;
-    message.value =
-      object.value !== undefined && object.value !== null
+    return {
+      value: isSet(object.value)
         ? bytesFromBase64(object.value)
-        : new Uint8Array();
-    return message;
+        : new Uint8Array(),
+    };
   },
 
   toJSON(message: Uuid): unknown {
@@ -334,19 +357,18 @@ export const Uuid = {
   },
 
   fromPartial<I extends Exact<DeepPartial<Uuid>, I>>(object: I): Uuid {
-    const message = { ...baseUuid } as Uuid;
+    const message = createBaseUuid();
     message.value = object.value ?? new Uint8Array();
     return message;
   },
 };
 
-const baseSetClientPosition: object = { x: 0, y: 0, facing: 0 };
+function createBaseClientPosition(): ClientPosition {
+  return { x: 0, y: 0, facing: 0 };
+}
 
-export const SetClientPosition = {
-  encode(message: SetClientPosition, writer: Writer = Writer.create()): Writer {
-    if (message.id !== undefined) {
-      Uuid.encode(message.id, writer.uint32(10).fork()).ldelim();
-    }
+export const ClientPosition = {
+  encode(message: ClientPosition, writer: Writer = Writer.create()): Writer {
     if (message.x !== 0) {
       writer.uint32(16).int32(message.x);
     }
@@ -359,16 +381,13 @@ export const SetClientPosition = {
     return writer;
   },
 
-  decode(input: Reader | Uint8Array, length?: number): SetClientPosition {
+  decode(input: Reader | Uint8Array, length?: number): ClientPosition {
     const reader = input instanceof Reader ? input : new Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseSetClientPosition } as SetClientPosition;
+    const message = createBaseClientPosition();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
-        case 1:
-          message.id = Uuid.decode(reader, reader.uint32());
-          break;
         case 2:
           message.x = reader.int32();
           break;
@@ -386,41 +405,26 @@ export const SetClientPosition = {
     return message;
   },
 
-  fromJSON(object: any): SetClientPosition {
-    const message = { ...baseSetClientPosition } as SetClientPosition;
-    message.id =
-      object.id !== undefined && object.id !== null
-        ? Uuid.fromJSON(object.id)
-        : undefined;
-    message.x =
-      object.x !== undefined && object.x !== null ? Number(object.x) : 0;
-    message.y =
-      object.y !== undefined && object.y !== null ? Number(object.y) : 0;
-    message.facing =
-      object.facing !== undefined && object.facing !== null
-        ? Number(object.facing)
-        : 0;
-    return message;
+  fromJSON(object: any): ClientPosition {
+    return {
+      x: isSet(object.x) ? Number(object.x) : 0,
+      y: isSet(object.y) ? Number(object.y) : 0,
+      facing: isSet(object.facing) ? Number(object.facing) : 0,
+    };
   },
 
-  toJSON(message: SetClientPosition): unknown {
+  toJSON(message: ClientPosition): unknown {
     const obj: any = {};
-    message.id !== undefined &&
-      (obj.id = message.id ? Uuid.toJSON(message.id) : undefined);
     message.x !== undefined && (obj.x = Math.round(message.x));
     message.y !== undefined && (obj.y = Math.round(message.y));
     message.facing !== undefined && (obj.facing = message.facing);
     return obj;
   },
 
-  fromPartial<I extends Exact<DeepPartial<SetClientPosition>, I>>(
+  fromPartial<I extends Exact<DeepPartial<ClientPosition>, I>>(
     object: I
-  ): SetClientPosition {
-    const message = { ...baseSetClientPosition } as SetClientPosition;
-    message.id =
-      object.id !== undefined && object.id !== null
-        ? Uuid.fromPartial(object.id)
-        : undefined;
+  ): ClientPosition {
+    const message = createBaseClientPosition();
     message.x = object.x ?? 0;
     message.y = object.y ?? 0;
     message.facing = object.facing ?? 0;
@@ -428,7 +432,151 @@ export const SetClientPosition = {
   },
 };
 
-const baseKillServerRequest: object = {};
+function createBaseSetClientData(): SetClientData {
+  return { id: undefined, clientPosition: undefined, volume: undefined };
+}
+
+export const SetClientData = {
+  encode(message: SetClientData, writer: Writer = Writer.create()): Writer {
+    if (message.id !== undefined) {
+      Uuid.encode(message.id, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.clientPosition !== undefined) {
+      ClientPosition.encode(
+        message.clientPosition,
+        writer.uint32(18).fork()
+      ).ldelim();
+    }
+    if (message.volume !== undefined) {
+      writer.uint32(24).int32(message.volume);
+    }
+    return writer;
+  },
+
+  decode(input: Reader | Uint8Array, length?: number): SetClientData {
+    const reader = input instanceof Reader ? input : new Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSetClientData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.id = Uuid.decode(reader, reader.uint32());
+          break;
+        case 2:
+          message.clientPosition = ClientPosition.decode(
+            reader,
+            reader.uint32()
+          );
+          break;
+        case 3:
+          message.volume = reader.int32();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SetClientData {
+    return {
+      id: isSet(object.id) ? Uuid.fromJSON(object.id) : undefined,
+      clientPosition: isSet(object.clientPosition)
+        ? ClientPosition.fromJSON(object.clientPosition)
+        : undefined,
+      volume: isSet(object.volume) ? Number(object.volume) : undefined,
+    };
+  },
+
+  toJSON(message: SetClientData): unknown {
+    const obj: any = {};
+    message.id !== undefined &&
+      (obj.id = message.id ? Uuid.toJSON(message.id) : undefined);
+    message.clientPosition !== undefined &&
+      (obj.clientPosition = message.clientPosition
+        ? ClientPosition.toJSON(message.clientPosition)
+        : undefined);
+    message.volume !== undefined && (obj.volume = Math.round(message.volume));
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<SetClientData>, I>>(
+    object: I
+  ): SetClientData {
+    const message = createBaseSetClientData();
+    message.id =
+      object.id !== undefined && object.id !== null
+        ? Uuid.fromPartial(object.id)
+        : undefined;
+    message.clientPosition =
+      object.clientPosition !== undefined && object.clientPosition !== null
+        ? ClientPosition.fromPartial(object.clientPosition)
+        : undefined;
+    message.volume = object.volume ?? undefined;
+    return message;
+  },
+};
+
+function createBaseDisconnectClient(): DisconnectClient {
+  return { id: undefined };
+}
+
+export const DisconnectClient = {
+  encode(message: DisconnectClient, writer: Writer = Writer.create()): Writer {
+    if (message.id !== undefined) {
+      Uuid.encode(message.id, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: Reader | Uint8Array, length?: number): DisconnectClient {
+    const reader = input instanceof Reader ? input : new Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDisconnectClient();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.id = Uuid.decode(reader, reader.uint32());
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DisconnectClient {
+    return {
+      id: isSet(object.id) ? Uuid.fromJSON(object.id) : undefined,
+    };
+  },
+
+  toJSON(message: DisconnectClient): unknown {
+    const obj: any = {};
+    message.id !== undefined &&
+      (obj.id = message.id ? Uuid.toJSON(message.id) : undefined);
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<DisconnectClient>, I>>(
+    object: I
+  ): DisconnectClient {
+    const message = createBaseDisconnectClient();
+    message.id =
+      object.id !== undefined && object.id !== null
+        ? Uuid.fromPartial(object.id)
+        : undefined;
+    return message;
+  },
+};
+
+function createBaseKillServerRequest(): KillServerRequest {
+  return {};
+}
 
 export const KillServerRequest = {
   encode(_: KillServerRequest, writer: Writer = Writer.create()): Writer {
@@ -438,7 +586,7 @@ export const KillServerRequest = {
   decode(input: Reader | Uint8Array, length?: number): KillServerRequest {
     const reader = input instanceof Reader ? input : new Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseKillServerRequest } as KillServerRequest;
+    const message = createBaseKillServerRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -451,8 +599,7 @@ export const KillServerRequest = {
   },
 
   fromJSON(_: any): KillServerRequest {
-    const message = { ...baseKillServerRequest } as KillServerRequest;
-    return message;
+    return {};
   },
 
   toJSON(_: KillServerRequest): unknown {
@@ -463,12 +610,14 @@ export const KillServerRequest = {
   fromPartial<I extends Exact<DeepPartial<KillServerRequest>, I>>(
     _: I
   ): KillServerRequest {
-    const message = { ...baseKillServerRequest } as KillServerRequest;
+    const message = createBaseKillServerRequest();
     return message;
   },
 };
 
-const baseLogToServer: object = { logLine: "" };
+function createBaseLogToServer(): LogToServer {
+  return { logLine: "" };
+}
 
 export const LogToServer = {
   encode(message: LogToServer, writer: Writer = Writer.create()): Writer {
@@ -481,7 +630,7 @@ export const LogToServer = {
   decode(input: Reader | Uint8Array, length?: number): LogToServer {
     const reader = input instanceof Reader ? input : new Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseLogToServer } as LogToServer;
+    const message = createBaseLogToServer();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -497,12 +646,9 @@ export const LogToServer = {
   },
 
   fromJSON(object: any): LogToServer {
-    const message = { ...baseLogToServer } as LogToServer;
-    message.logLine =
-      object.logLine !== undefined && object.logLine !== null
-        ? String(object.logLine)
-        : "";
-    return message;
+    return {
+      logLine: isSet(object.logLine) ? String(object.logLine) : "",
+    };
   },
 
   toJSON(message: LogToServer): unknown {
@@ -514,22 +660,24 @@ export const LogToServer = {
   fromPartial<I extends Exact<DeepPartial<LogToServer>, I>>(
     object: I
   ): LogToServer {
-    const message = { ...baseLogToServer } as LogToServer;
+    const message = createBaseLogToServer();
     message.logLine = object.logLine ?? "";
     return message;
   },
 };
 
-const baseClientMessage: object = { messageType: 0 };
+function createBaseClientMessage(): ClientMessage {
+  return { messageType: 0, requestDetails: undefined };
+}
 
 export const ClientMessage = {
   encode(message: ClientMessage, writer: Writer = Writer.create()): Writer {
     if (message.messageType !== 0) {
       writer.uint32(8).int32(message.messageType);
     }
-    if (message.requestDetails?.$case === "setClientPosition") {
-      SetClientPosition.encode(
-        message.requestDetails.setClientPosition,
+    if (message.requestDetails?.$case === "setClientData") {
+      SetClientData.encode(
+        message.requestDetails.setClientData,
         writer.uint32(18).fork()
       ).ldelim();
     }
@@ -551,7 +699,7 @@ export const ClientMessage = {
   decode(input: Reader | Uint8Array, length?: number): ClientMessage {
     const reader = input instanceof Reader ? input : new Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseClientMessage } as ClientMessage;
+    const message = createBaseClientMessage();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -560,11 +708,8 @@ export const ClientMessage = {
           break;
         case 2:
           message.requestDetails = {
-            $case: "setClientPosition",
-            setClientPosition: SetClientPosition.decode(
-              reader,
-              reader.uint32()
-            ),
+            $case: "setClientData",
+            setClientData: SetClientData.decode(reader, reader.uint32()),
           };
           break;
         case 3:
@@ -591,45 +736,38 @@ export const ClientMessage = {
   },
 
   fromJSON(object: any): ClientMessage {
-    const message = { ...baseClientMessage } as ClientMessage;
-    message.messageType =
-      object.messageType !== undefined && object.messageType !== null
+    return {
+      messageType: isSet(object.messageType)
         ? clientMessage_MessageTypeFromJSON(object.messageType)
-        : 0;
-    if (
-      object.setClientPosition !== undefined &&
-      object.setClientPosition !== null
-    ) {
-      message.requestDetails = {
-        $case: "setClientPosition",
-        setClientPosition: SetClientPosition.fromJSON(object.setClientPosition),
-      };
-    }
-    if (
-      object.killServerRequest !== undefined &&
-      object.killServerRequest !== null
-    ) {
-      message.requestDetails = {
-        $case: "killServerRequest",
-        killServerRequest: KillServerRequest.fromJSON(object.killServerRequest),
-      };
-    }
-    if (object.logToServer !== undefined && object.logToServer !== null) {
-      message.requestDetails = {
-        $case: "logToServer",
-        logToServer: LogToServer.fromJSON(object.logToServer),
-      };
-    }
-    return message;
+        : 0,
+      requestDetails: isSet(object.setClientData)
+        ? {
+            $case: "setClientData",
+            setClientData: SetClientData.fromJSON(object.setClientData),
+          }
+        : isSet(object.killServerRequest)
+        ? {
+            $case: "killServerRequest",
+            killServerRequest: KillServerRequest.fromJSON(
+              object.killServerRequest
+            ),
+          }
+        : isSet(object.logToServer)
+        ? {
+            $case: "logToServer",
+            logToServer: LogToServer.fromJSON(object.logToServer),
+          }
+        : undefined,
+    };
   },
 
   toJSON(message: ClientMessage): unknown {
     const obj: any = {};
     message.messageType !== undefined &&
       (obj.messageType = clientMessage_MessageTypeToJSON(message.messageType));
-    message.requestDetails?.$case === "setClientPosition" &&
-      (obj.setClientPosition = message.requestDetails?.setClientPosition
-        ? SetClientPosition.toJSON(message.requestDetails?.setClientPosition)
+    message.requestDetails?.$case === "setClientData" &&
+      (obj.setClientData = message.requestDetails?.setClientData
+        ? SetClientData.toJSON(message.requestDetails?.setClientData)
         : undefined);
     message.requestDetails?.$case === "killServerRequest" &&
       (obj.killServerRequest = message.requestDetails?.killServerRequest
@@ -645,17 +783,17 @@ export const ClientMessage = {
   fromPartial<I extends Exact<DeepPartial<ClientMessage>, I>>(
     object: I
   ): ClientMessage {
-    const message = { ...baseClientMessage } as ClientMessage;
+    const message = createBaseClientMessage();
     message.messageType = object.messageType ?? 0;
     if (
-      object.requestDetails?.$case === "setClientPosition" &&
-      object.requestDetails?.setClientPosition !== undefined &&
-      object.requestDetails?.setClientPosition !== null
+      object.requestDetails?.$case === "setClientData" &&
+      object.requestDetails?.setClientData !== undefined &&
+      object.requestDetails?.setClientData !== null
     ) {
       message.requestDetails = {
-        $case: "setClientPosition",
-        setClientPosition: SetClientPosition.fromPartial(
-          object.requestDetails.setClientPosition
+        $case: "setClientData",
+        setClientData: SetClientData.fromPartial(
+          object.requestDetails.setClientData
         ),
       };
     }
@@ -685,15 +823,88 @@ export const ClientMessage = {
   },
 };
 
-const baseServerMessage: object = { messageType: 0 };
+function createBaseClientUpdates(): ClientUpdates {
+  return { clientData: [] };
+}
+
+export const ClientUpdates = {
+  encode(message: ClientUpdates, writer: Writer = Writer.create()): Writer {
+    for (const v of message.clientData) {
+      SetClientData.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: Reader | Uint8Array, length?: number): ClientUpdates {
+    const reader = input instanceof Reader ? input : new Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseClientUpdates();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.clientData.push(
+            SetClientData.decode(reader, reader.uint32())
+          );
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ClientUpdates {
+    return {
+      clientData: Array.isArray(object?.clientData)
+        ? object.clientData.map((e: any) => SetClientData.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ClientUpdates): unknown {
+    const obj: any = {};
+    if (message.clientData) {
+      obj.clientData = message.clientData.map((e) =>
+        e ? SetClientData.toJSON(e) : undefined
+      );
+    } else {
+      obj.clientData = [];
+    }
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ClientUpdates>, I>>(
+    object: I
+  ): ClientUpdates {
+    const message = createBaseClientUpdates();
+    message.clientData =
+      object.clientData?.map((e) => SetClientData.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseServerMessage(): ServerMessage {
+  return { messageType: 0, messageDetails: undefined };
+}
 
 export const ServerMessage = {
   encode(message: ServerMessage, writer: Writer = Writer.create()): Writer {
     if (message.messageType !== 0) {
       writer.uint32(8).int32(message.messageType);
     }
-    if (message.encodedMessage.length !== 0) {
-      writer.uint32(18).bytes(message.encodedMessage);
+    if (message.messageDetails?.$case === "clientUpdates") {
+      ClientUpdates.encode(
+        message.messageDetails.clientUpdates,
+        writer.uint32(18).fork()
+      ).ldelim();
+    }
+    if (message.messageDetails?.$case === "disconnectClient") {
+      DisconnectClient.encode(
+        message.messageDetails.disconnectClient,
+        writer.uint32(26).fork()
+      ).ldelim();
     }
     return writer;
   },
@@ -701,8 +912,7 @@ export const ServerMessage = {
   decode(input: Reader | Uint8Array, length?: number): ServerMessage {
     const reader = input instanceof Reader ? input : new Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseServerMessage } as ServerMessage;
-    message.encodedMessage = new Uint8Array();
+    const message = createBaseServerMessage();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -710,7 +920,16 @@ export const ServerMessage = {
           message.messageType = reader.int32() as any;
           break;
         case 2:
-          message.encodedMessage = reader.bytes();
+          message.messageDetails = {
+            $case: "clientUpdates",
+            clientUpdates: ClientUpdates.decode(reader, reader.uint32()),
+          };
+          break;
+        case 3:
+          message.messageDetails = {
+            $case: "disconnectClient",
+            disconnectClient: DisconnectClient.decode(reader, reader.uint32()),
+          };
           break;
         default:
           reader.skipType(tag & 7);
@@ -721,42 +940,77 @@ export const ServerMessage = {
   },
 
   fromJSON(object: any): ServerMessage {
-    const message = { ...baseServerMessage } as ServerMessage;
-    message.messageType =
-      object.messageType !== undefined && object.messageType !== null
+    return {
+      messageType: isSet(object.messageType)
         ? serverMessage_MessageTypeFromJSON(object.messageType)
-        : 0;
-    message.encodedMessage =
-      object.encodedMessage !== undefined && object.encodedMessage !== null
-        ? bytesFromBase64(object.encodedMessage)
-        : new Uint8Array();
-    return message;
+        : 0,
+      messageDetails: isSet(object.clientUpdates)
+        ? {
+            $case: "clientUpdates",
+            clientUpdates: ClientUpdates.fromJSON(object.clientUpdates),
+          }
+        : isSet(object.disconnectClient)
+        ? {
+            $case: "disconnectClient",
+            disconnectClient: DisconnectClient.fromJSON(
+              object.disconnectClient
+            ),
+          }
+        : undefined,
+    };
   },
 
   toJSON(message: ServerMessage): unknown {
     const obj: any = {};
     message.messageType !== undefined &&
       (obj.messageType = serverMessage_MessageTypeToJSON(message.messageType));
-    message.encodedMessage !== undefined &&
-      (obj.encodedMessage = base64FromBytes(
-        message.encodedMessage !== undefined
-          ? message.encodedMessage
-          : new Uint8Array()
-      ));
+    message.messageDetails?.$case === "clientUpdates" &&
+      (obj.clientUpdates = message.messageDetails?.clientUpdates
+        ? ClientUpdates.toJSON(message.messageDetails?.clientUpdates)
+        : undefined);
+    message.messageDetails?.$case === "disconnectClient" &&
+      (obj.disconnectClient = message.messageDetails?.disconnectClient
+        ? DisconnectClient.toJSON(message.messageDetails?.disconnectClient)
+        : undefined);
     return obj;
   },
 
   fromPartial<I extends Exact<DeepPartial<ServerMessage>, I>>(
     object: I
   ): ServerMessage {
-    const message = { ...baseServerMessage } as ServerMessage;
+    const message = createBaseServerMessage();
     message.messageType = object.messageType ?? 0;
-    message.encodedMessage = object.encodedMessage ?? new Uint8Array();
+    if (
+      object.messageDetails?.$case === "clientUpdates" &&
+      object.messageDetails?.clientUpdates !== undefined &&
+      object.messageDetails?.clientUpdates !== null
+    ) {
+      message.messageDetails = {
+        $case: "clientUpdates",
+        clientUpdates: ClientUpdates.fromPartial(
+          object.messageDetails.clientUpdates
+        ),
+      };
+    }
+    if (
+      object.messageDetails?.$case === "disconnectClient" &&
+      object.messageDetails?.disconnectClient !== undefined &&
+      object.messageDetails?.disconnectClient !== null
+    ) {
+      message.messageDetails = {
+        $case: "disconnectClient",
+        disconnectClient: DisconnectClient.fromPartial(
+          object.messageDetails.disconnectClient
+        ),
+      };
+    }
     return message;
   },
 };
 
-const baseConnectWithServer: object = {};
+function createBaseConnectWithServer(): ConnectWithServer {
+  return { serverID: undefined };
+}
 
 export const ConnectWithServer = {
   encode(message: ConnectWithServer, writer: Writer = Writer.create()): Writer {
@@ -769,7 +1023,7 @@ export const ConnectWithServer = {
   decode(input: Reader | Uint8Array, length?: number): ConnectWithServer {
     const reader = input instanceof Reader ? input : new Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseConnectWithServer } as ConnectWithServer;
+    const message = createBaseConnectWithServer();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -785,12 +1039,11 @@ export const ConnectWithServer = {
   },
 
   fromJSON(object: any): ConnectWithServer {
-    const message = { ...baseConnectWithServer } as ConnectWithServer;
-    message.serverID =
-      object.serverID !== undefined && object.serverID !== null
+    return {
+      serverID: isSet(object.serverID)
         ? Uuid.fromJSON(object.serverID)
-        : undefined;
-    return message;
+        : undefined,
+    };
   },
 
   toJSON(message: ConnectWithServer): unknown {
@@ -805,7 +1058,7 @@ export const ConnectWithServer = {
   fromPartial<I extends Exact<DeepPartial<ConnectWithServer>, I>>(
     object: I
   ): ConnectWithServer {
-    const message = { ...baseConnectWithServer } as ConnectWithServer;
+    const message = createBaseConnectWithServer();
     message.serverID =
       object.serverID !== undefined && object.serverID !== null
         ? Uuid.fromPartial(object.serverID)
@@ -814,7 +1067,9 @@ export const ConnectWithServer = {
   },
 };
 
-const baseSDP: object = { sdpType: "", sdp: "" };
+function createBaseSDP(): SDP {
+  return { peerID: undefined, sdpType: "", sdp: "" };
+}
 
 export const SDP = {
   encode(message: SDP, writer: Writer = Writer.create()): Writer {
@@ -833,7 +1088,7 @@ export const SDP = {
   decode(input: Reader | Uint8Array, length?: number): SDP {
     const reader = input instanceof Reader ? input : new Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseSDP } as SDP;
+    const message = createBaseSDP();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -855,18 +1110,11 @@ export const SDP = {
   },
 
   fromJSON(object: any): SDP {
-    const message = { ...baseSDP } as SDP;
-    message.peerID =
-      object.peerID !== undefined && object.peerID !== null
-        ? Uuid.fromJSON(object.peerID)
-        : undefined;
-    message.sdpType =
-      object.sdpType !== undefined && object.sdpType !== null
-        ? String(object.sdpType)
-        : "";
-    message.sdp =
-      object.sdp !== undefined && object.sdp !== null ? String(object.sdp) : "";
-    return message;
+    return {
+      peerID: isSet(object.peerID) ? Uuid.fromJSON(object.peerID) : undefined,
+      sdpType: isSet(object.sdpType) ? String(object.sdpType) : "",
+      sdp: isSet(object.sdp) ? String(object.sdp) : "",
+    };
   },
 
   toJSON(message: SDP): unknown {
@@ -879,7 +1127,7 @@ export const SDP = {
   },
 
   fromPartial<I extends Exact<DeepPartial<SDP>, I>>(object: I): SDP {
-    const message = { ...baseSDP } as SDP;
+    const message = createBaseSDP();
     message.peerID =
       object.peerID !== undefined && object.peerID !== null
         ? Uuid.fromPartial(object.peerID)
@@ -890,11 +1138,9 @@ export const SDP = {
   },
 };
 
-const baseIceCandidate: object = {
-  candidate: "",
-  sdpMid: "",
-  sdpMLineIndex: 0,
-};
+function createBaseIceCandidate(): IceCandidate {
+  return { peerID: undefined, candidate: "", sdpMid: "", sdpMLineIndex: 0 };
+}
 
 export const IceCandidate = {
   encode(message: IceCandidate, writer: Writer = Writer.create()): Writer {
@@ -916,7 +1162,7 @@ export const IceCandidate = {
   decode(input: Reader | Uint8Array, length?: number): IceCandidate {
     const reader = input instanceof Reader ? input : new Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseIceCandidate } as IceCandidate;
+    const message = createBaseIceCandidate();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -941,24 +1187,14 @@ export const IceCandidate = {
   },
 
   fromJSON(object: any): IceCandidate {
-    const message = { ...baseIceCandidate } as IceCandidate;
-    message.peerID =
-      object.peerID !== undefined && object.peerID !== null
-        ? Uuid.fromJSON(object.peerID)
-        : undefined;
-    message.candidate =
-      object.candidate !== undefined && object.candidate !== null
-        ? String(object.candidate)
-        : "";
-    message.sdpMid =
-      object.sdpMid !== undefined && object.sdpMid !== null
-        ? String(object.sdpMid)
-        : "";
-    message.sdpMLineIndex =
-      object.sdpMLineIndex !== undefined && object.sdpMLineIndex !== null
+    return {
+      peerID: isSet(object.peerID) ? Uuid.fromJSON(object.peerID) : undefined,
+      candidate: isSet(object.candidate) ? String(object.candidate) : "",
+      sdpMid: isSet(object.sdpMid) ? String(object.sdpMid) : "",
+      sdpMLineIndex: isSet(object.sdpMLineIndex)
         ? Number(object.sdpMLineIndex)
-        : 0;
-    return message;
+        : 0,
+    };
   },
 
   toJSON(message: IceCandidate): unknown {
@@ -975,7 +1211,7 @@ export const IceCandidate = {
   fromPartial<I extends Exact<DeepPartial<IceCandidate>, I>>(
     object: I
   ): IceCandidate {
-    const message = { ...baseIceCandidate } as IceCandidate;
+    const message = createBaseIceCandidate();
     message.peerID =
       object.peerID !== undefined && object.peerID !== null
         ? Uuid.fromPartial(object.peerID)
@@ -987,7 +1223,9 @@ export const IceCandidate = {
   },
 };
 
-const baseRequestRTCRenegotiation: object = {};
+function createBaseRequestRTCRenegotiation(): RequestRTCRenegotiation {
+  return { peerID: undefined };
+}
 
 export const RequestRTCRenegotiation = {
   encode(
@@ -1003,9 +1241,7 @@ export const RequestRTCRenegotiation = {
   decode(input: Reader | Uint8Array, length?: number): RequestRTCRenegotiation {
     const reader = input instanceof Reader ? input : new Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseRequestRTCRenegotiation,
-    } as RequestRTCRenegotiation;
+    const message = createBaseRequestRTCRenegotiation();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1021,14 +1257,9 @@ export const RequestRTCRenegotiation = {
   },
 
   fromJSON(object: any): RequestRTCRenegotiation {
-    const message = {
-      ...baseRequestRTCRenegotiation,
-    } as RequestRTCRenegotiation;
-    message.peerID =
-      object.peerID !== undefined && object.peerID !== null
-        ? Uuid.fromJSON(object.peerID)
-        : undefined;
-    return message;
+    return {
+      peerID: isSet(object.peerID) ? Uuid.fromJSON(object.peerID) : undefined,
+    };
   },
 
   toJSON(message: RequestRTCRenegotiation): unknown {
@@ -1041,9 +1272,7 @@ export const RequestRTCRenegotiation = {
   fromPartial<I extends Exact<DeepPartial<RequestRTCRenegotiation>, I>>(
     object: I
   ): RequestRTCRenegotiation {
-    const message = {
-      ...baseRequestRTCRenegotiation,
-    } as RequestRTCRenegotiation;
+    const message = createBaseRequestRTCRenegotiation();
     message.peerID =
       object.peerID !== undefined && object.peerID !== null
         ? Uuid.fromPartial(object.peerID)
@@ -1052,7 +1281,9 @@ export const RequestRTCRenegotiation = {
   },
 };
 
-const baseTellClientAboutMixer: object = {};
+function createBaseTellClientAboutMixer(): TellClientAboutMixer {
+  return { serverID: undefined };
+}
 
 export const TellClientAboutMixer = {
   encode(
@@ -1068,7 +1299,7 @@ export const TellClientAboutMixer = {
   decode(input: Reader | Uint8Array, length?: number): TellClientAboutMixer {
     const reader = input instanceof Reader ? input : new Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseTellClientAboutMixer } as TellClientAboutMixer;
+    const message = createBaseTellClientAboutMixer();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1084,12 +1315,11 @@ export const TellClientAboutMixer = {
   },
 
   fromJSON(object: any): TellClientAboutMixer {
-    const message = { ...baseTellClientAboutMixer } as TellClientAboutMixer;
-    message.serverID =
-      object.serverID !== undefined && object.serverID !== null
+    return {
+      serverID: isSet(object.serverID)
         ? Uuid.fromJSON(object.serverID)
-        : undefined;
-    return message;
+        : undefined,
+    };
   },
 
   toJSON(message: TellClientAboutMixer): unknown {
@@ -1104,7 +1334,7 @@ export const TellClientAboutMixer = {
   fromPartial<I extends Exact<DeepPartial<TellClientAboutMixer>, I>>(
     object: I
   ): TellClientAboutMixer {
-    const message = { ...baseTellClientAboutMixer } as TellClientAboutMixer;
+    const message = createBaseTellClientAboutMixer();
     message.serverID =
       object.serverID !== undefined && object.serverID !== null
         ? Uuid.fromPartial(object.serverID)
@@ -1113,7 +1343,9 @@ export const TellClientAboutMixer = {
   },
 };
 
-const baseErrorResponse: object = { message: "" };
+function createBaseErrorResponse(): ErrorResponse {
+  return { message: "" };
+}
 
 export const ErrorResponse = {
   encode(message: ErrorResponse, writer: Writer = Writer.create()): Writer {
@@ -1126,7 +1358,7 @@ export const ErrorResponse = {
   decode(input: Reader | Uint8Array, length?: number): ErrorResponse {
     const reader = input instanceof Reader ? input : new Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseErrorResponse } as ErrorResponse;
+    const message = createBaseErrorResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1142,12 +1374,9 @@ export const ErrorResponse = {
   },
 
   fromJSON(object: any): ErrorResponse {
-    const message = { ...baseErrorResponse } as ErrorResponse;
-    message.message =
-      object.message !== undefined && object.message !== null
-        ? String(object.message)
-        : "";
-    return message;
+    return {
+      message: isSet(object.message) ? String(object.message) : "",
+    };
   },
 
   toJSON(message: ErrorResponse): unknown {
@@ -1159,13 +1388,15 @@ export const ErrorResponse = {
   fromPartial<I extends Exact<DeepPartial<ErrorResponse>, I>>(
     object: I
   ): ErrorResponse {
-    const message = { ...baseErrorResponse } as ErrorResponse;
+    const message = createBaseErrorResponse();
     message.message = object.message ?? "";
     return message;
   },
 };
 
-const baseCoordinatorMessage: object = { messageType: 0 };
+function createBaseCoordinatorMessage(): CoordinatorMessage {
+  return { id: undefined, messageType: 0, messageDetails: undefined };
+}
 
 export const CoordinatorMessage = {
   encode(
@@ -1232,7 +1463,7 @@ export const CoordinatorMessage = {
   decode(input: Reader | Uint8Array, length?: number): CoordinatorMessage {
     const reader = input instanceof Reader ? input : new Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseCoordinatorMessage } as CoordinatorMessage;
+    const message = createBaseCoordinatorMessage();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1311,80 +1542,55 @@ export const CoordinatorMessage = {
   },
 
   fromJSON(object: any): CoordinatorMessage {
-    const message = { ...baseCoordinatorMessage } as CoordinatorMessage;
-    message.id =
-      object.id !== undefined && object.id !== null
-        ? Uuid.fromJSON(object.id)
-        : undefined;
-    message.messageType =
-      object.messageType !== undefined && object.messageType !== null
+    return {
+      id: isSet(object.id) ? Uuid.fromJSON(object.id) : undefined,
+      messageType: isSet(object.messageType)
         ? coordinatorMessage_MessageTypeFromJSON(object.messageType)
-        : 0;
-    if (
-      object.connectWithServer !== undefined &&
-      object.connectWithServer !== null
-    ) {
-      message.messageDetails = {
-        $case: "connectWithServer",
-        connectWithServer: ConnectWithServer.fromJSON(object.connectWithServer),
-      };
-    }
-    if (object.mixerSDP !== undefined && object.mixerSDP !== null) {
-      message.messageDetails = {
-        $case: "mixerSDP",
-        mixerSDP: SDP.fromJSON(object.mixerSDP),
-      };
-    }
-    if (object.clientSDP !== undefined && object.clientSDP !== null) {
-      message.messageDetails = {
-        $case: "clientSDP",
-        clientSDP: SDP.fromJSON(object.clientSDP),
-      };
-    }
-    if (object.iceCandidate !== undefined && object.iceCandidate !== null) {
-      message.messageDetails = {
-        $case: "iceCandidate",
-        iceCandidate: IceCandidate.fromJSON(object.iceCandidate),
-      };
-    }
-    if (
-      object.tellClientAboutMixer !== undefined &&
-      object.tellClientAboutMixer !== null
-    ) {
-      message.messageDetails = {
-        $case: "tellClientAboutMixer",
-        tellClientAboutMixer: TellClientAboutMixer.fromJSON(
-          object.tellClientAboutMixer
-        ),
-      };
-    }
-    if (object.errorResponse !== undefined && object.errorResponse !== null) {
-      message.messageDetails = {
-        $case: "errorResponse",
-        errorResponse: ErrorResponse.fromJSON(object.errorResponse),
-      };
-    }
-    if (
-      object.killServerRequest !== undefined &&
-      object.killServerRequest !== null
-    ) {
-      message.messageDetails = {
-        $case: "killServerRequest",
-        killServerRequest: KillServerRequest.fromJSON(object.killServerRequest),
-      };
-    }
-    if (
-      object.requestRTCRenegotiation !== undefined &&
-      object.requestRTCRenegotiation !== null
-    ) {
-      message.messageDetails = {
-        $case: "requestRTCRenegotiation",
-        requestRTCRenegotiation: RequestRTCRenegotiation.fromJSON(
-          object.requestRTCRenegotiation
-        ),
-      };
-    }
-    return message;
+        : 0,
+      messageDetails: isSet(object.connectWithServer)
+        ? {
+            $case: "connectWithServer",
+            connectWithServer: ConnectWithServer.fromJSON(
+              object.connectWithServer
+            ),
+          }
+        : isSet(object.mixerSDP)
+        ? { $case: "mixerSDP", mixerSDP: SDP.fromJSON(object.mixerSDP) }
+        : isSet(object.clientSDP)
+        ? { $case: "clientSDP", clientSDP: SDP.fromJSON(object.clientSDP) }
+        : isSet(object.iceCandidate)
+        ? {
+            $case: "iceCandidate",
+            iceCandidate: IceCandidate.fromJSON(object.iceCandidate),
+          }
+        : isSet(object.tellClientAboutMixer)
+        ? {
+            $case: "tellClientAboutMixer",
+            tellClientAboutMixer: TellClientAboutMixer.fromJSON(
+              object.tellClientAboutMixer
+            ),
+          }
+        : isSet(object.errorResponse)
+        ? {
+            $case: "errorResponse",
+            errorResponse: ErrorResponse.fromJSON(object.errorResponse),
+          }
+        : isSet(object.killServerRequest)
+        ? {
+            $case: "killServerRequest",
+            killServerRequest: KillServerRequest.fromJSON(
+              object.killServerRequest
+            ),
+          }
+        : isSet(object.requestRTCRenegotiation)
+        ? {
+            $case: "requestRTCRenegotiation",
+            requestRTCRenegotiation: RequestRTCRenegotiation.fromJSON(
+              object.requestRTCRenegotiation
+            ),
+          }
+        : undefined,
+    };
   },
 
   toJSON(message: CoordinatorMessage): unknown {
@@ -1438,7 +1644,7 @@ export const CoordinatorMessage = {
   fromPartial<I extends Exact<DeepPartial<CoordinatorMessage>, I>>(
     object: I
   ): CoordinatorMessage {
-    const message = { ...baseCoordinatorMessage } as CoordinatorMessage;
+    const message = createBaseCoordinatorMessage();
     message.id =
       object.id !== undefined && object.id !== null
         ? Uuid.fromPartial(object.id)
@@ -1540,7 +1746,9 @@ export const CoordinatorMessage = {
   },
 };
 
-const baseClientHello: object = {};
+function createBaseClientHello(): ClientHello {
+  return { clientID: undefined, secret: undefined };
+}
 
 export const ClientHello = {
   encode(message: ClientHello, writer: Writer = Writer.create()): Writer {
@@ -1556,7 +1764,7 @@ export const ClientHello = {
   decode(input: Reader | Uint8Array, length?: number): ClientHello {
     const reader = input instanceof Reader ? input : new Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseClientHello } as ClientHello;
+    const message = createBaseClientHello();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1575,16 +1783,12 @@ export const ClientHello = {
   },
 
   fromJSON(object: any): ClientHello {
-    const message = { ...baseClientHello } as ClientHello;
-    message.clientID =
-      object.clientID !== undefined && object.clientID !== null
+    return {
+      clientID: isSet(object.clientID)
         ? Uuid.fromJSON(object.clientID)
-        : undefined;
-    message.secret =
-      object.secret !== undefined && object.secret !== null
-        ? Uuid.fromJSON(object.secret)
-        : undefined;
-    return message;
+        : undefined,
+      secret: isSet(object.secret) ? Uuid.fromJSON(object.secret) : undefined,
+    };
   },
 
   toJSON(message: ClientHello): unknown {
@@ -1601,7 +1805,7 @@ export const ClientHello = {
   fromPartial<I extends Exact<DeepPartial<ClientHello>, I>>(
     object: I
   ): ClientHello {
-    const message = { ...baseClientHello } as ClientHello;
+    const message = createBaseClientHello();
     message.clientID =
       object.clientID !== undefined && object.clientID !== null
         ? Uuid.fromPartial(object.clientID)
@@ -1614,7 +1818,9 @@ export const ClientHello = {
   },
 };
 
-const baseCoordinatorClientMessage: object = { messageType: 0 };
+function createBaseCoordinatorClientMessage(): CoordinatorClientMessage {
+  return { messageType: 0, messageDetails: undefined };
+}
 
 export const CoordinatorClientMessage = {
   encode(
@@ -1654,9 +1860,7 @@ export const CoordinatorClientMessage = {
   ): CoordinatorClientMessage {
     const reader = input instanceof Reader ? input : new Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = {
-      ...baseCoordinatorClientMessage,
-    } as CoordinatorClientMessage;
+    const message = createBaseCoordinatorClientMessage();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1699,40 +1903,31 @@ export const CoordinatorClientMessage = {
   },
 
   fromJSON(object: any): CoordinatorClientMessage {
-    const message = {
-      ...baseCoordinatorClientMessage,
-    } as CoordinatorClientMessage;
-    message.messageType =
-      object.messageType !== undefined && object.messageType !== null
+    return {
+      messageType: isSet(object.messageType)
         ? coordinatorClientMessage_MessageTypeFromJSON(object.messageType)
-        : 0;
-    if (object.clientHello !== undefined && object.clientHello !== null) {
-      message.messageDetails = {
-        $case: "clientHello",
-        clientHello: ClientHello.fromJSON(object.clientHello),
-      };
-    }
-    if (object.sdp !== undefined && object.sdp !== null) {
-      message.messageDetails = { $case: "sdp", sdp: SDP.fromJSON(object.sdp) };
-    }
-    if (object.iceCandidate !== undefined && object.iceCandidate !== null) {
-      message.messageDetails = {
-        $case: "iceCandidate",
-        iceCandidate: IceCandidate.fromJSON(object.iceCandidate),
-      };
-    }
-    if (
-      object.requestRTCRenegotiation !== undefined &&
-      object.requestRTCRenegotiation !== null
-    ) {
-      message.messageDetails = {
-        $case: "requestRTCRenegotiation",
-        requestRTCRenegotiation: RequestRTCRenegotiation.fromJSON(
-          object.requestRTCRenegotiation
-        ),
-      };
-    }
-    return message;
+        : 0,
+      messageDetails: isSet(object.clientHello)
+        ? {
+            $case: "clientHello",
+            clientHello: ClientHello.fromJSON(object.clientHello),
+          }
+        : isSet(object.sdp)
+        ? { $case: "sdp", sdp: SDP.fromJSON(object.sdp) }
+        : isSet(object.iceCandidate)
+        ? {
+            $case: "iceCandidate",
+            iceCandidate: IceCandidate.fromJSON(object.iceCandidate),
+          }
+        : isSet(object.requestRTCRenegotiation)
+        ? {
+            $case: "requestRTCRenegotiation",
+            requestRTCRenegotiation: RequestRTCRenegotiation.fromJSON(
+              object.requestRTCRenegotiation
+            ),
+          }
+        : undefined,
+    };
   },
 
   toJSON(message: CoordinatorClientMessage): unknown {
@@ -1766,9 +1961,7 @@ export const CoordinatorClientMessage = {
   fromPartial<I extends Exact<DeepPartial<CoordinatorClientMessage>, I>>(
     object: I
   ): CoordinatorClientMessage {
-    const message = {
-      ...baseCoordinatorClientMessage,
-    } as CoordinatorClientMessage;
+    const message = createBaseCoordinatorClientMessage();
     message.messageType = object.messageType ?? 0;
     if (
       object.messageDetails?.$case === "clientHello" &&
@@ -1888,4 +2081,8 @@ export type Exact<P, I extends P> = P extends Builtin
 if (util.Long !== Long) {
   util.Long = Long as any;
   configure();
+}
+
+function isSet(value: any): boolean {
+  return value !== null && value !== undefined;
 }

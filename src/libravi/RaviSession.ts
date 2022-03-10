@@ -24,7 +24,7 @@ import {
 
     ClientMessage,
     ClientMessage_MessageType,
-    SetClientPosition,
+    SetClientData,
     KillServerRequest
 
 } from "./ssm";
