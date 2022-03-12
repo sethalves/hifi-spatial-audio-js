@@ -18,25 +18,25 @@ export type OtherUserGainMap = { [key: string]: number };
 /**
  * Instantiations of this class contain all of the data that is possible to **send to AND receive from** the High Fidelity Audio API Server.
  * All member data inside this `class` can be sent to the High Fidelity Audio API Server. See below for more details.
- * 
+ *
  * See {@link ReceivedHiFiAudioAPIData} for data that can't be sent to the Server, but rather can only be received from the Server (i.e. `volumeDecibels`).
- * 
+ *
  * Member data of this class that is sent to the Server will affect the final mixed spatial audio for all listeners in the server's virtual space.
  */
 export class HiFiAudioAPIData {
     /**
      * If you don't supply a `position` when constructing instantiations of this class, `position` will be `null`.
-     * 
+     *
      * ✔ The client sends `position` data to the server when `_transmitHiFiAudioAPIDataToServer()` is called.
-     * 
+     *
      * ✔ The server sends `position` data to all clients connected to a server during "peer updates".
      */
     position: Point3D;
     /**
      * If you don't supply an `orientation` when constructing instantiations of this class, `orientation` will be `null`.
-     * 
+     *
      * ✔ The client sends `orientation` data to the server when `_transmitHiFiAudioAPIDataToServer()` is called.
-     * 
+     *
      * ✔ The server sends `orientation` data to all clients connected to a server during "peer updates".
      */
     orientation: Quaternion;
@@ -45,7 +45,7 @@ export class HiFiAudioAPIData {
      * The floating point value is specified in dBFS (decibels relative to full scale) with values between -96 dB (indicating no gating)
      * and 0 dB (effectively muting the input from this user). It is in the same decibel units as the VolumeDecibels component of UserDataSubscription.
      * Setting this value to `NaN` will cause the volume threshold from the space to be used instead.
-     * 
+     *
      * **COMPATIBILITY WARNING:** Currently, setting `volumeThreshold` to `null` will also reset its value to the space default volume threshold.
      * In the future, the value of `volumeThreshold` will only be reset if it is set to `NaN`.
      * A `volumeThreshold` set to `null` will in the future will be treated as if `volumeThreshold` is not supplied.
@@ -62,9 +62,9 @@ export class HiFiAudioAPIData {
      * This value also affects the distance at which User A can be heard in 3D space.
      * Higher values for User A means that User A will sound louder to other users around User A, and it also means that User A will be audible from a greater distance.
      * If you don't supply an `hiFiGain` when constructing instantiations of this class, `hiFiGain` will be `null`.
-     * 
+     *
      * ✔ The client sends `hiFiGain` data to the server when `_transmitHiFiAudioAPIDataToServer()` is called.
-     * 
+     *
      * ❌ The server does not send `hiFiGain` data to all clients as part of "peer updates".
      */
     hiFiGain: number;
@@ -72,7 +72,7 @@ export class HiFiAudioAPIData {
      * This value affects how far a user's sound will travel in 3D space, without affecting the user's loudness.
      * By default, there is a global attenuation value (set for a given space) that applies to all users in a space. This default space
      * attenuation is usually 0.5, which represents a reasonable approximation of a real-world fall-off in sound over distance.
-     * 
+     *
      * When setting this value for an individual user, the following holds:
      *   - A value of `NaN` causes the user to inherit the global attenuation for a space, or, if zones are defined for the space,
      * the attenuation settings at the user's position. **COMPATIBILITY WARNING:** Currently, setting `userAttenuation` to 0 will
@@ -84,35 +84,35 @@ export class HiFiAudioAPIData {
      * it to set `userAttenuation` to `NaN` instead, in order for it to continue working with future versions of
      * High Fidelity's Spatial Audio API.
      *   - Positive numbers between 0 and 1 (excluding 0) represent logarithmic attenuation. This range is recommended, as it is
-     * more natural sounding.  Smaller numbers represent less attenuation, so a number such as 0.2 can be used to make a particular 
+     * more natural sounding.  Smaller numbers represent less attenuation, so a number such as 0.2 can be used to make a particular
      * user's audio travel farther than other users', for instance in "amplified" concert type settings. A number such as 0.02 will
      * make the user's audio travel even farther.
      *  - A value of near 0, such as 0.001, will greatly reduce attenuation for a given user, resulting effectively in a "broadcast mode" where the user can be
      * heard throughout the entire space regardless of their location relative to other users.
      *   - Negative attenuation numbers are used to represent linear attenuation, and are a somewhat artificial, non-real-world concept. However,
-     * this setting can be used as a blunt tool to easily test attenuation, and tune it aggressively in extreme circumstances. When using linear 
+     * this setting can be used as a blunt tool to easily test attenuation, and tune it aggressively in extreme circumstances. When using linear
      * attenuation, the setting is the distance in meters at which the audio becomes totally inaudible.
      *
      * If you don't supply a `userAttenuation` when constructing instantiations of this class, the previous value of `userAttenuation` will
      * be used. If `userAttenuation` has never been supplied, the attenuation of the space will be used instead.
-     * 
+     *
      * ✔ The client sends `userAttenuation` data to the server when `_transmitHiFiAudioAPIDataToServer()` is called.
-     * 
+     *
      * ❌ The server never sends `userAttenuation` data.
      */
     userAttenuation: number;
     /**
-     * @param userRolloff This value represents the progressive high frequency roll-off in meters, a measure of how the higher frequencies 
-     * in a user's sound are dampened as the user gets further away. By default, there is a global roll-off value (set for a given space), currently 16 
-     * meters, which applies to all users in a space. This value represents the distance for a 1kHz rolloff. Values in the range of 
-     * 12 to 32 meters provide a more "enclosed" sound, in which high frequencies tend to be dampened over distance as they are 
+     * @param userRolloff This value represents the progressive high frequency roll-off in meters, a measure of how the higher frequencies
+     * in a user's sound are dampened as the user gets further away. By default, there is a global roll-off value (set for a given space), currently 16
+     * meters, which applies to all users in a space. This value represents the distance for a 1kHz rolloff. Values in the range of
+     * 12 to 32 meters provide a more "enclosed" sound, in which high frequencies tend to be dampened over distance as they are
      * in the real world. Generally changes to roll-off values should be made for the entire space rather than for individual users, but
      * extremely high values (e.g. 99999) should be used in combination with "broadcast mode"-style userAttenuation settings to cause the
      * broadcasted voice to sound crisp and "up close" even at very large distances.
      *
      * A `userRolloff` of `NaN` will cause the user to inherit the global frequency rolloff for the space, or, if zones are defined
      * for the space, the frequency rolloff settings at the user's position.
-     * 
+     *
      * **COMPATIBILITY WARNING:** Currently, setting `userRolloff` to 0 will also reset its value to the space/zone default rolloff
      * In the future, the value of `userRolloff` will only be reset if it is set to `NaN`
      * A `userRolloff` set to 0 will in the future be treated as a valid frequency rolloff value,
@@ -123,9 +123,9 @@ export class HiFiAudioAPIData {
      *
      * If you don't supply a `userRolloff` when constructing instantiations of this class, the previous value of `userRolloff` will
      * be used. If `userRolloff` has never been supplied, the frequency rolloff of the space will be used instead.
-     * 
+     *
      * ✔ The client sends `userRolloff` data to the server when `_transmitHiFiAudioAPIDataToServer()` is called.
-     * 
+     *
      * ❌ The server never sends `userRolloff` data.
      */
     userRolloff: number;
@@ -139,7 +139,15 @@ export class HiFiAudioAPIData {
      */
     /** @internal */
     _otherUserGainQueue: OtherUserGainMap;
-    
+
+
+    volume: number;
+    facing: number;
+    hexColor: string;
+    displayName: string;
+    profileImageURL: string;
+
+
     constructor({ position = null, orientation = null, volumeThreshold = null, hiFiGain = null, userAttenuation = null, userRolloff = null }: { position?: Point3D, orientation?: Quaternion, volumeThreshold?: number, hiFiGain?: number, userAttenuation?: number, userRolloff?: number } = {}) {
         this.position = position;
         this.orientation = orientation;
@@ -154,7 +162,7 @@ export class HiFiAudioAPIData {
 /**
  * Instantiations of this class contain all of the data that is possible to **receive from** the High Fidelity Audio API Server.
  * See below for more details.
- * 
+ *
  * See {@link HiFiAudioAPIData} for data that can both be sent to and received from the Server (i.e. `position`).
  */
 export class ReceivedHiFiAudioAPIData extends HiFiAudioAPIData {
@@ -165,20 +173,20 @@ export class ReceivedHiFiAudioAPIData extends HiFiAudioAPIData {
     providedUserID: string;
     /**
      * This string is a hashed version of the random UUID that is generated automatically.
-     * 
+     *
      * A connecting client sends this value as the `session` key inside the argument to the `audionet.init` command.
-     * 
+     *
      * It is used to identify a given client across a cloud of mixers and is guaranteed ("guaranteed" given the context of random UUIDS) to be unique.
      * Application developers should not need to interact with or make use of this value, unless they want to use it internally for tracking or other purposes.
-     * 
+     *
      * This value cannot be set by the application developer.
      */
     hashedVisitID: string;
     /**
      * The current volume of the user in decibels.
-     * 
+     *
      * ❌ The client never sends `volumeDecibels` data to the server.
-     * 
+     *
      * ✔ The server sends `volumeDecibels` data to all clients connected to a server during "peer updates".
      */
     volumeDecibels: number;
@@ -189,7 +197,7 @@ export class ReceivedHiFiAudioAPIData extends HiFiAudioAPIData {
      * The server sends `isStereo` data to all clients connected to a server during "peer updates".
      */
     isStereo: boolean;
-    
+
     constructor(params: { providedUserID?: string, hashedVisitID?: string, volumeDecibels?: number, position?: Point3D, orientation?: Quaternion, isStereo?: boolean } = {}) {
         super(params);
         this.providedUserID = params.providedUserID;

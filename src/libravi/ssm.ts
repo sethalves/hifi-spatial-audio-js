@@ -20,6 +20,13 @@ export interface SetClientData {
   id: Uuid | undefined;
   clientPosition?: ClientPosition | undefined;
   volume?: number | undefined;
+  /** "#84b2e5" */
+  hexColor?: string | undefined;
+  displayName?: string | undefined;
+  profileImageURL?: string | undefined;
+  volumeThreshold?: number | undefined;
+  userAttenuation?: number | undefined;
+  userRolloff?: number | undefined;
 }
 
 export interface DisconnectClient {
@@ -433,7 +440,17 @@ export const ClientPosition = {
 };
 
 function createBaseSetClientData(): SetClientData {
-  return { id: undefined, clientPosition: undefined, volume: undefined };
+  return {
+    id: undefined,
+    clientPosition: undefined,
+    volume: undefined,
+    hexColor: undefined,
+    displayName: undefined,
+    profileImageURL: undefined,
+    volumeThreshold: undefined,
+    userAttenuation: undefined,
+    userRolloff: undefined,
+  };
 }
 
 export const SetClientData = {
@@ -448,7 +465,25 @@ export const SetClientData = {
       ).ldelim();
     }
     if (message.volume !== undefined) {
-      writer.uint32(24).int32(message.volume);
+      writer.uint32(29).float(message.volume);
+    }
+    if (message.hexColor !== undefined) {
+      writer.uint32(34).string(message.hexColor);
+    }
+    if (message.displayName !== undefined) {
+      writer.uint32(42).string(message.displayName);
+    }
+    if (message.profileImageURL !== undefined) {
+      writer.uint32(50).string(message.profileImageURL);
+    }
+    if (message.volumeThreshold !== undefined) {
+      writer.uint32(61).float(message.volumeThreshold);
+    }
+    if (message.userAttenuation !== undefined) {
+      writer.uint32(69).float(message.userAttenuation);
+    }
+    if (message.userRolloff !== undefined) {
+      writer.uint32(77).float(message.userRolloff);
     }
     return writer;
   },
@@ -470,7 +505,25 @@ export const SetClientData = {
           );
           break;
         case 3:
-          message.volume = reader.int32();
+          message.volume = reader.float();
+          break;
+        case 4:
+          message.hexColor = reader.string();
+          break;
+        case 5:
+          message.displayName = reader.string();
+          break;
+        case 6:
+          message.profileImageURL = reader.string();
+          break;
+        case 7:
+          message.volumeThreshold = reader.float();
+          break;
+        case 8:
+          message.userAttenuation = reader.float();
+          break;
+        case 9:
+          message.userRolloff = reader.float();
           break;
         default:
           reader.skipType(tag & 7);
@@ -487,6 +540,22 @@ export const SetClientData = {
         ? ClientPosition.fromJSON(object.clientPosition)
         : undefined,
       volume: isSet(object.volume) ? Number(object.volume) : undefined,
+      hexColor: isSet(object.hexColor) ? String(object.hexColor) : undefined,
+      displayName: isSet(object.displayName)
+        ? String(object.displayName)
+        : undefined,
+      profileImageURL: isSet(object.profileImageURL)
+        ? String(object.profileImageURL)
+        : undefined,
+      volumeThreshold: isSet(object.volumeThreshold)
+        ? Number(object.volumeThreshold)
+        : undefined,
+      userAttenuation: isSet(object.userAttenuation)
+        ? Number(object.userAttenuation)
+        : undefined,
+      userRolloff: isSet(object.userRolloff)
+        ? Number(object.userRolloff)
+        : undefined,
     };
   },
 
@@ -498,7 +567,18 @@ export const SetClientData = {
       (obj.clientPosition = message.clientPosition
         ? ClientPosition.toJSON(message.clientPosition)
         : undefined);
-    message.volume !== undefined && (obj.volume = Math.round(message.volume));
+    message.volume !== undefined && (obj.volume = message.volume);
+    message.hexColor !== undefined && (obj.hexColor = message.hexColor);
+    message.displayName !== undefined &&
+      (obj.displayName = message.displayName);
+    message.profileImageURL !== undefined &&
+      (obj.profileImageURL = message.profileImageURL);
+    message.volumeThreshold !== undefined &&
+      (obj.volumeThreshold = message.volumeThreshold);
+    message.userAttenuation !== undefined &&
+      (obj.userAttenuation = message.userAttenuation);
+    message.userRolloff !== undefined &&
+      (obj.userRolloff = message.userRolloff);
     return obj;
   },
 
@@ -515,6 +595,12 @@ export const SetClientData = {
         ? ClientPosition.fromPartial(object.clientPosition)
         : undefined;
     message.volume = object.volume ?? undefined;
+    message.hexColor = object.hexColor ?? undefined;
+    message.displayName = object.displayName ?? undefined;
+    message.profileImageURL = object.profileImageURL ?? undefined;
+    message.volumeThreshold = object.volumeThreshold ?? undefined;
+    message.userAttenuation = object.userAttenuation ?? undefined;
+    message.userRolloff = object.userRolloff ?? undefined;
     return message;
   },
 };

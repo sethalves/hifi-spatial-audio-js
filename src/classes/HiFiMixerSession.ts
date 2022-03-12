@@ -7,6 +7,8 @@
  * @packageDocumentation
  */
 
+import { v4 as uuidv4, parse as uuidParse, stringify as uuidStringify, NIL as nullID } from "uuid";
+
 import { HiFiAudioAPIData, Quaternion, Point3D, ReceivedHiFiAudioAPIData, OtherUserGainMap } from "./HiFiAudioAPIData";
 import { HiFiCoordinateFrameUtil } from "../utilities/HiFiCoordinateFrameUtil";
 import { HiFiLogger } from "../utilities/HiFiLogger";
@@ -20,6 +22,8 @@ import pako from 'pako'
 
 
 import {
+    Uuid,
+
     ClientMessage,
     ClientMessage_MessageType,
     SetClientData,
@@ -46,6 +50,13 @@ const INIT_TIMEOUT_MS = 5000;
 const PERSONAL_VOLUME_ADJUST_TIMEOUT_MS = 5000;
 
 type ConnectionStateChangeHandler = (state: HiFiConnectionStates, result: HiFiConnectionAttemptResult) => void;
+
+
+function protoUUIDToUuid(u : Uuid) : string {
+    var asBytes : any = u.value;
+    return uuidStringify(asBytes);
+}
+
 
 /** @internal */
 interface AudionetSetOtherUserGainsForThisConnectionResponse {
@@ -184,7 +195,6 @@ export class HiFiMixerSession {
      *
      * Thus, the Library user should never have to care about the `_mixerPeerKeyToStateCacheDict`.
      */
-    private _mixerPeerKeyToStateCacheDict: any;
 
     /**
      * We will track whether or not the input stream is stereo, so that
@@ -319,7 +329,6 @@ export class HiFiMixerSession {
         this.userDataStreamingScope = userDataStreamingScope;
         this.onUserDataUpdated = onUserDataUpdated;
         this.onUsersDisconnected = onUsersDisconnected;
-        this._mixerPeerKeyToStateCacheDict = {};
         this._lastSuccessfulInputAudioMutedValue = false;
         this.onMuteChanged = onMuteChanged;
         this._getUserFacingConnectionState = getUserFacingConnectionState;
@@ -356,19 +365,19 @@ export class HiFiMixerSession {
      */
     async promiseToRunAudioInit(currentHifiAudioAPIData? : HiFiAudioAPIData): Promise<HiFiConnectionAttemptResult> {
         return new Promise((resolve, reject) => {
-            let initData = {
-                primary: true,
-                // The mixer will hash this randomly-generated UUID, then disseminate it to all clients via `peerData.e`.
-                visit_id: this._raviSession.getUUID(),
-                session: this._raviSession.getUUID(), // Still required for old mixers. Will eventually go away.
-                streaming_scope: this.userDataStreamingScope,
-                is_input_stream_stereo: this._inputAudioMediaStreamIsStereo
-            };
+            // let initData = {
+            //     primary: true,
+            //     // The mixer will hash this randomly-generated UUID, then disseminate it to all clients via `peerData.e`.
+            //     visit_id: this._raviSession.getUUID(),
+            //     session: this._raviSession.getUUID(), // Still required for old mixers. Will eventually go away.
+            //     streaming_scope: this.userDataStreamingScope,
+            //     is_input_stream_stereo: this._inputAudioMediaStreamIsStereo
+            // };
 
-            if (currentHifiAudioAPIData) {
-                let initialDataToSend = this._getDataToTransmitToMixer(currentHifiAudioAPIData);
-                initData = { ...initData, ...initialDataToSend };
-            }
+            // if (currentHifiAudioAPIData) {
+            //     let initialDataToSend = this._getDataToTransmitToMixer(currentHifiAudioAPIData);
+            //     initData = { ...initData, ...initialDataToSend };
+            // }
 
             let commandController = this._raviSession.getCommandController();
             if (!commandController) {
@@ -409,11 +418,43 @@ export class HiFiMixerSession {
         switch(serverMessage.messageDetails.$case) {
 
             case "clientUpdates":
-                console.log("XXX got clientUpdates");
+                var clientUpdates : ClientUpdates = serverMessage.messageDetails.clientUpdates;
+                let allNewUserData: Array<ReceivedHiFiAudioAPIData> = [];
+                for (var setClientData of clientUpdates.clientData) {
+                    console.log("QQQQ handleRAVISessionBinaryData got " + JSON.stringify(SetClientData.toJSON(setClientData)))
+                    var clientID : string = protoUUIDToUuid(setClientData.id)
+                    let newUserData : ReceivedHiFiAudioAPIData = new ReceivedHiFiAudioAPIData();
+                    newUserData.hashedVisitID = clientID;
+                    if (setClientData.clientPosition) {
+                        let position = new Point3D();
+                        position.x = setClientData.clientPosition.x / 1000.0;
+                        position.y = 0.0;
+                        position.z = setClientData.clientPosition.y / 1000.0;
+                        if (this._coordFrameUtil) {
+                            newUserData.position = this._coordFrameUtil.HiFiPositionToWorld(position);
+                        } else {
+                            newUserData.position = position;
+                        }
+                        newUserData.facing = setClientData.clientPosition.facing;
+                    }
+                    if (setClientData.volume) { newUserData.volume = setClientData.volume; }
+                    if (setClientData.hexColor) { newUserData.hexColor = setClientData.hexColor; }
+                    if (setClientData.displayName) { newUserData.displayName = setClientData.displayName; }
+                    if (setClientData.profileImageURL) { newUserData.profileImageURL = setClientData.profileImageURL; }
+                    if (setClientData.volumeThreshold) { newUserData.volumeThreshold = setClientData.volumeThreshold; }
+                    if (setClientData.userAttenuation) { newUserData.userAttenuation = setClientData.userAttenuation; }
+                    if (setClientData.userRolloff) { newUserData.userRolloff = setClientData.userRolloff; }
+                    allNewUserData.push(newUserData);
+                }
+
+                if (this.onUserDataUpdated && allNewUserData.length > 0) {
+                    this.onUserDataUpdated(allNewUserData);
+                }
                 break;
 
             case "disconnectClient":
                 console.log("XXX got disconnectClient");
+                // onUsersDisconnected
                 break;
         }
 
@@ -1137,157 +1178,158 @@ export class HiFiMixerSession {
     /**
      * This method converts the HiFiAudioAPIData structure into the format needed by the mixer.
      */
-    _getDataToTransmitToMixer(currentHifiAudioAPIData: HiFiAudioAPIData, previousHifiAudioAPIData?: HiFiAudioAPIData): any {
-        let dataForMixer: any = {};
+    // _getDataToTransmitToMixer(currentHifiAudioAPIData: HiFiAudioAPIData, previousHifiAudioAPIData?: HiFiAudioAPIData): any {
+    //     let dataForMixer: any = {};
 
-        // if a position is specified with valid components, let's consider adding position payload
-        if (currentHifiAudioAPIData.position && (typeof (currentHifiAudioAPIData.position.x) === "number")
-            && (typeof (currentHifiAudioAPIData.position.y) === "number")
-            && (typeof (currentHifiAudioAPIData.position.z) === "number")) {
-            // Detect the position components which have really changed compared to the previous state known from the server
-            let changedComponents: { x: boolean, y: boolean, z: boolean, changed: boolean } = { x: false, y: false, z: false, changed: false };
-            if (previousHifiAudioAPIData && previousHifiAudioAPIData.position) {
-                if (currentHifiAudioAPIData.position.x !== previousHifiAudioAPIData.position.x) {
-                    changedComponents.x = true;
-                    changedComponents.changed = true;
-                }
-                if (currentHifiAudioAPIData.position.y !== previousHifiAudioAPIData.position.y) {
-                    changedComponents.y = true;
-                    changedComponents.changed = true;
-                }
-                if (currentHifiAudioAPIData.position.z !== previousHifiAudioAPIData.position.z) {
-                    changedComponents.z = true;
-                    changedComponents.changed = true;
-                }
-            } else {
-                changedComponents.x = true;
-                changedComponents.y = true;
-                changedComponents.z = true;
-                changedComponents.changed = true;
-            }
+    //     // if a position is specified with valid components, let's consider adding position payload
+    //     if (currentHifiAudioAPIData.position && (typeof (currentHifiAudioAPIData.position.x) === "number")
+    //         && (typeof (currentHifiAudioAPIData.position.y) === "number")
+    //         && (typeof (currentHifiAudioAPIData.position.z) === "number")) {
+    //         // Detect the position components which have really changed compared to the previous state known from the server
+    //         let changedComponents: { x: boolean, y: boolean, z: boolean, changed: boolean } = { x: false, y: false, z: false, changed: false };
+    //         if (previousHifiAudioAPIData && previousHifiAudioAPIData.position) {
+    //             if (currentHifiAudioAPIData.position.x !== previousHifiAudioAPIData.position.x) {
+    //                 changedComponents.x = true;
+    //                 changedComponents.changed = true;
+    //             }
+    //             if (currentHifiAudioAPIData.position.y !== previousHifiAudioAPIData.position.y) {
+    //                 changedComponents.y = true;
+    //                 changedComponents.changed = true;
+    //             }
+    //             if (currentHifiAudioAPIData.position.z !== previousHifiAudioAPIData.position.z) {
+    //                 changedComponents.z = true;
+    //                 changedComponents.changed = true;
+    //             }
+    //         } else {
+    //             changedComponents.x = true;
+    //             changedComponents.y = true;
+    //             changedComponents.z = true;
+    //             changedComponents.changed = true;
+    //         }
 
-            // Some position components have changed, let's fill in the payload
-            if (changedComponents.changed) {
-                let translatedPosition = currentHifiAudioAPIData.position;
-                if (this._coordFrameUtil != null) {
-                    // convert the received position from HiFi- to World-frame
-                    translatedPosition = this._coordFrameUtil.WorldPositionToHiFi(translatedPosition);
-                }
+    //         // Some position components have changed, let's fill in the payload
+    //         if (changedComponents.changed) {
+    //             let translatedPosition = currentHifiAudioAPIData.position;
+    //             if (this._coordFrameUtil != null) {
+    //                 // convert the received position from HiFi- to World-frame
+    //                 translatedPosition = this._coordFrameUtil.WorldPositionToHiFi(translatedPosition);
+    //             }
 
-                // Position data is sent in millimeters integers to reduce JSON size.
-                if (changedComponents.x) {
-                    dataForMixer["x"] = Math.round(translatedPosition.x * 1000);
-                }
-                if (changedComponents.y) {
-                    dataForMixer["y"] = Math.round(translatedPosition.y * 1000);
-                }
-                if (changedComponents.z) {
-                    dataForMixer["z"] = Math.round(translatedPosition.z * 1000);
-                }
-            }
-        }
+    //             // Position data is sent in millimeters integers to reduce JSON size.
+    //             if (changedComponents.x) {
+    //                 dataForMixer["x"] = Math.round(translatedPosition.x * 1000);
+    //             }
+    //             if (changedComponents.y) {
+    //                 dataForMixer["y"] = Math.round(translatedPosition.y * 1000);
+    //             }
+    //             if (changedComponents.z) {
+    //                 dataForMixer["z"] = Math.round(translatedPosition.z * 1000);
+    //             }
+    //         }
+    //     }
 
-        // if orientation is specified with valid components, let's consider adding orientation payload
-        if (currentHifiAudioAPIData.orientation && (typeof (currentHifiAudioAPIData.orientation.w) === "number")
-            && (typeof (currentHifiAudioAPIData.orientation.x) === "number")
-            && (typeof (currentHifiAudioAPIData.orientation.y) === "number")
-            && (typeof (currentHifiAudioAPIData.orientation.z) === "number")) {
-            // Detect the orientation components which have really changed compared to the previous state known from the server
-            let changedComponents: { w: boolean, x: boolean, y: boolean, z: boolean, changed: boolean } = { w: false, x: false, y: false, z: false, changed: false };
-            if (previousHifiAudioAPIData && previousHifiAudioAPIData.orientation) {
-                if (currentHifiAudioAPIData.orientation.w !== previousHifiAudioAPIData.orientation.w) {
-                    changedComponents.w = true;
-                    changedComponents.changed = true;
-                }
-                if (currentHifiAudioAPIData.orientation.x !== previousHifiAudioAPIData.orientation.x) {
-                    changedComponents.x = true;
-                    changedComponents.changed = true;
-                }
-                if (currentHifiAudioAPIData.orientation.y !== previousHifiAudioAPIData.orientation.y) {
-                    changedComponents.y = true;
-                    changedComponents.changed = true;
-                }
-                if (currentHifiAudioAPIData.orientation.z !== previousHifiAudioAPIData.orientation.z) {
-                    changedComponents.z = true;
-                    changedComponents.changed = true;
-                }
-            } else {
-                changedComponents.w = true;
-                changedComponents.x = true;
-                changedComponents.y = true;
-                changedComponents.z = true;
-                changedComponents.changed = true;
-            }
+    //     // if orientation is specified with valid components, let's consider adding orientation payload
+    //     if (currentHifiAudioAPIData.orientation && (typeof (currentHifiAudioAPIData.orientation.w) === "number")
+    //         && (typeof (currentHifiAudioAPIData.orientation.x) === "number")
+    //         && (typeof (currentHifiAudioAPIData.orientation.y) === "number")
+    //         && (typeof (currentHifiAudioAPIData.orientation.z) === "number")) {
+    //         // Detect the orientation components which have really changed compared to the previous state known from the server
+    //         let changedComponents: { w: boolean, x: boolean, y: boolean, z: boolean, changed: boolean } = { w: false, x: false, y: false, z: false, changed: false };
+    //         if (previousHifiAudioAPIData && previousHifiAudioAPIData.orientation) {
+    //             if (currentHifiAudioAPIData.orientation.w !== previousHifiAudioAPIData.orientation.w) {
+    //                 changedComponents.w = true;
+    //                 changedComponents.changed = true;
+    //             }
+    //             if (currentHifiAudioAPIData.orientation.x !== previousHifiAudioAPIData.orientation.x) {
+    //                 changedComponents.x = true;
+    //                 changedComponents.changed = true;
+    //             }
+    //             if (currentHifiAudioAPIData.orientation.y !== previousHifiAudioAPIData.orientation.y) {
+    //                 changedComponents.y = true;
+    //                 changedComponents.changed = true;
+    //             }
+    //             if (currentHifiAudioAPIData.orientation.z !== previousHifiAudioAPIData.orientation.z) {
+    //                 changedComponents.z = true;
+    //                 changedComponents.changed = true;
+    //             }
+    //         } else {
+    //             changedComponents.w = true;
+    //             changedComponents.x = true;
+    //             changedComponents.y = true;
+    //             changedComponents.z = true;
+    //             changedComponents.changed = true;
+    //         }
 
-            // Some orientation components have changed, let's fill in the payload
-            if (changedComponents.changed) {
-                let translatedOrientation = currentHifiAudioAPIData.orientation;
-                if (this._coordFrameUtil != null) {
-                    translatedOrientation = this._coordFrameUtil.WorldOrientationToHiFi(translatedOrientation);
-                }
+    //         // Some orientation components have changed, let's fill in the payload
+    //         if (changedComponents.changed) {
+    //             let translatedOrientation = currentHifiAudioAPIData.orientation;
+    //             if (this._coordFrameUtil != null) {
+    //                 translatedOrientation = this._coordFrameUtil.WorldOrientationToHiFi(translatedOrientation);
+    //             }
 
-                // The mixer expects Quaternion to be mulitiplied by 1000.
-                if (changedComponents.w) {
-                    dataForMixer["W"] = translatedOrientation.w * 1000;
-                }
-                if (changedComponents.x) {
-                    dataForMixer["X"] = translatedOrientation.x * 1000;
-                }
-                if (changedComponents.y) {
-                    dataForMixer["Y"] = translatedOrientation.y * 1000;
-                }
-                if (changedComponents.z) {
-                    dataForMixer["Z"] = translatedOrientation.z * 1000;
-                }
-            }
-        }
+    //             // The mixer expects Quaternion to be mulitiplied by 1000.
+    //             if (changedComponents.w) {
+    //                 dataForMixer["W"] = translatedOrientation.w * 1000;
+    //             }
+    //             if (changedComponents.x) {
+    //                 dataForMixer["X"] = translatedOrientation.x * 1000;
+    //             }
+    //             if (changedComponents.y) {
+    //                 dataForMixer["Y"] = translatedOrientation.y * 1000;
+    //             }
+    //             if (changedComponents.z) {
+    //                 dataForMixer["Z"] = translatedOrientation.z * 1000;
+    //             }
+    //         }
+    //     }
 
-        if (typeof (currentHifiAudioAPIData.volumeThreshold) === "number" || // May be NaN
-            currentHifiAudioAPIData.volumeThreshold === null) {
-            dataForMixer["T"] = currentHifiAudioAPIData.volumeThreshold;
-        }
+    //     if (typeof (currentHifiAudioAPIData.volumeThreshold) === "number" || // May be NaN
+    //         currentHifiAudioAPIData.volumeThreshold === null) {
+    //         dataForMixer["T"] = currentHifiAudioAPIData.volumeThreshold;
+    //     }
 
-        if (typeof (currentHifiAudioAPIData.hiFiGain) === "number") {
-            dataForMixer["g"] = Math.max(0, currentHifiAudioAPIData.hiFiGain);
-        }
+    //     if (typeof (currentHifiAudioAPIData.hiFiGain) === "number") {
+    //         dataForMixer["g"] = Math.max(0, currentHifiAudioAPIData.hiFiGain);
+    //     }
 
-        if (typeof (currentHifiAudioAPIData.userAttenuation) === "number") { // May be NaN
-            dataForMixer["a"] = currentHifiAudioAPIData.userAttenuation;
-        }
+    //     if (typeof (currentHifiAudioAPIData.userAttenuation) === "number") { // May be NaN
+    //         dataForMixer["a"] = currentHifiAudioAPIData.userAttenuation;
+    //     }
 
-        if (typeof (currentHifiAudioAPIData.userRolloff) === "number") { // May be NaN
-            dataForMixer["r"] = Math.max(0, currentHifiAudioAPIData.userRolloff);
-        }
+    //     if (typeof (currentHifiAudioAPIData.userRolloff) === "number") { // May be NaN
+    //         dataForMixer["r"] = Math.max(0, currentHifiAudioAPIData.userRolloff);
+    //     }
 
-        if (typeof(currentHifiAudioAPIData._otherUserGainQueue) == "object") {
-            let changedUserGains: OtherUserGainMap = {};
-            let idToGains = Object.entries(currentHifiAudioAPIData._otherUserGainQueue);
-            let previousOtherUserGains = previousHifiAudioAPIData ? previousHifiAudioAPIData._otherUserGainQueue : undefined;
-            for (const idToGain of idToGains) {
-                let hashedVisitId = idToGain[0];
-                let gain = idToGain[1];
-                if (!(typeof(gain) == "number")) {
-                    continue;
-                }
-                if (previousOtherUserGains && previousOtherUserGains[hashedVisitId] === gain) {
-                    continue;
-                }
-                changedUserGains[hashedVisitId] = gain;
-            }
+    //     if (typeof(currentHifiAudioAPIData._otherUserGainQueue) == "object") {
+    //         let changedUserGains: OtherUserGainMap = {};
+    //         let idToGains = Object.entries(currentHifiAudioAPIData._otherUserGainQueue);
+    //         let previousOtherUserGains = previousHifiAudioAPIData ? previousHifiAudioAPIData._otherUserGainQueue : undefined;
+    //         for (const idToGain of idToGains) {
+    //             let hashedVisitId = idToGain[0];
+    //             let gain = idToGain[1];
+    //             if (!(typeof(gain) == "number")) {
+    //                 continue;
+    //             }
+    //             if (previousOtherUserGains && previousOtherUserGains[hashedVisitId] === gain) {
+    //                 continue;
+    //             }
+    //             changedUserGains[hashedVisitId] = gain;
+    //         }
 
-            if (Object.entries(changedUserGains).length) {
-                dataForMixer["V"] = changedUserGains;
-            }
-        }
-        return dataForMixer;
-    }
+    //         if (Object.entries(changedUserGains).length) {
+    //             dataForMixer["V"] = changedUserGains;
+    //         }
+    //     }
+    //     return dataForMixer;
+    // }
 
     /**
      * @param currentHifiAudioAPIData - The new user data that we want to send to the High Fidelity Audio API server.
      * @returns If this operation is successful, returns `{ success: true, stringifiedDataForMixer: <the raw data that was transmitted to the server>}`. If unsuccessful, returns
      * `{ success: false, error: <an error message> }`.
      */
-    _transmitHiFiAudioAPIDataToServer(currentHifiAudioAPIData: HiFiAudioAPIData, previousHifiAudioAPIData?: HiFiAudioAPIData): any {
+    _transmitHiFiAudioAPIDataToServer(currentHifiAudioAPIData: HiFiAudioAPIData,
+                                      previousHifiAudioAPIData?: HiFiAudioAPIData): any {
         if (!this.mixerInfo["connected"] || !this._raviSession) {
             return {
                 success: false,
@@ -1300,24 +1342,55 @@ export class HiFiMixerSession {
         let commandController = this._raviSession.getCommandController();
 
         if (commandController) {
-            // Stringified NaN values get converted to null, which the mixer interprets as unset
-            let dataForMixer = {
-                "x": Math.round(currentHifiAudioAPIData.position.x * 1000),
-                "y": Math.round(currentHifiAudioAPIData.position.y * 1000),
-                "z": Math.round(currentHifiAudioAPIData.position.z * 1000),
-                "facing": currentHifiAudioAPIData.orientation.getYaw()
-            };
-            let stringifiedDataForMixer = JSON.stringify(dataForMixer);
 
             var setClientData : SetClientData = {
-                id : RaviUtils.uuidToProtoUUID(this._raviSession.getUUID()),
-                clientPosition : {
-                    "x": Math.round(currentHifiAudioAPIData.position.x * 1000),
-                    "y": Math.round(currentHifiAudioAPIData.position.z * 1000), // client code expects Y to be up
-                    "facing": (Math.PI / 2) - (Math.PI * currentHifiAudioAPIData.orientation.getYaw() / 180.0)
-                }
+                id : RaviUtils.uuidToProtoUUID(this._raviSession.getUUID())
             };
 
+            if (currentHifiAudioAPIData.position || currentHifiAudioAPIData.facing) {
+                if (!setClientData.clientPosition) {
+                    setClientData.clientPosition = { x: 0, y: 0, facing: 0 };
+                }
+                if (previousHifiAudioAPIData.position) {
+                    setClientData.clientPosition = {
+                        x: Math.round(previousHifiAudioAPIData.position.x * 1000),
+                        y: Math.round(previousHifiAudioAPIData.position.z * 1000),
+                        facing: previousHifiAudioAPIData.facing
+                    };
+                }
+                if (currentHifiAudioAPIData.position) {
+                    setClientData.clientPosition.x = Math.round(currentHifiAudioAPIData.position.x * 1000);
+                    setClientData.clientPosition.y = Math.round(currentHifiAudioAPIData.position.z * 1000);
+                }
+                if (currentHifiAudioAPIData.facing) {
+                    setClientData.clientPosition.facing = currentHifiAudioAPIData.facing;
+                }
+            }
+
+            if (currentHifiAudioAPIData.hiFiGain) {
+                setClientData.volume = currentHifiAudioAPIData.hiFiGain;
+            }
+            if (currentHifiAudioAPIData.volume) {
+                setClientData.volume = currentHifiAudioAPIData.volume;
+            }
+            if (currentHifiAudioAPIData.hexColor) {
+                setClientData.hexColor = currentHifiAudioAPIData.hexColor;
+            }
+            if (currentHifiAudioAPIData.displayName) {
+                setClientData.displayName = currentHifiAudioAPIData.displayName;
+            }
+            if (currentHifiAudioAPIData.profileImageURL) {
+                setClientData.profileImageURL = currentHifiAudioAPIData.profileImageURL;
+            }
+            if (currentHifiAudioAPIData.volumeThreshold) {
+                setClientData.volumeThreshold = currentHifiAudioAPIData.volumeThreshold;
+            }
+            if (currentHifiAudioAPIData.userAttenuation) {
+                setClientData.userAttenuation = currentHifiAudioAPIData.userAttenuation;
+            }
+            if (currentHifiAudioAPIData.userRolloff) {
+                setClientData.userRolloff = currentHifiAudioAPIData.userRolloff;
+            }
             var clientMessage: ClientMessage = {
                 messageType: ClientMessage_MessageType.SET_CLIENT_DATA,
                 requestDetails: {
@@ -1331,7 +1404,7 @@ export class HiFiMixerSession {
             if (commandController.sendInput(msg)) {
                 return {
                     success: true,
-                    stringifiedDataForMixer: stringifiedDataForMixer
+                    stringifiedDataForMixer: SetClientData.toJSON(setClientData)
                 };
             } else {
                 return {
@@ -1339,6 +1412,7 @@ export class HiFiMixerSession {
                     error: `Command inputDataChanel not open`
                 };
             }
+
         } else {
             return {
                 success: false,
@@ -1354,6 +1428,5 @@ export class HiFiMixerSession {
         this.mixerInfo = {
             "connected": false,
         };
-        this._mixerPeerKeyToStateCacheDict = {};
     }
 }

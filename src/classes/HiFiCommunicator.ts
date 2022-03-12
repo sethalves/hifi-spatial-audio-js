@@ -78,7 +78,7 @@ export enum HiFiConnectionStates {
 };
 
 /**
- * 
+ *
  */
 export enum HiFiUserDataStreamingScopes {
     /**
@@ -188,7 +188,7 @@ export interface HiFiConnectionAttemptResult {
 
 /**
  * This class exposes properties and methods useful for communicating from the High Fidelity Audio API Client to
- * the High Fidelity Audio API Server. 
+ * the High Fidelity Audio API Server.
  */
 export class HiFiCommunicator {
     // Prevents users of our client-side API from slamming their mixer with requests.
@@ -254,15 +254,15 @@ export class HiFiCommunicator {
     private _rejectOpen: Function;
 
     /**
-     * If the World coordinate system is NOT compatible with the HiFi coordindate frame used by the mixer              
+     * If the World coordinate system is NOT compatible with the HiFi coordindate frame used by the mixer
      * then configure a HiFiCoordinateFrameUtil to transform to and from HiFi-frame.  All position/orientation
      * data will automatically transformed to/from the HiFi coordinate frame by the HiFiMixerSession for
      * on-the-wire data.
      *
-     * The World-frame is compatible iff:  
+     * The World-frame is compatible iff:
      * (1) It is right-handed
      * (2) It uses the Y-axis (positive or negative, doesn't matter) for the UP direction.
-     *           
+     *
      * For all other cases create a {@link WorldFrameConfiguration} and pass it to the HiFiCommunicator constructor.
      */
     private _coordFrameUtil?: HiFiCoordinateFrameUtil;
@@ -410,15 +410,15 @@ export class HiFiCommunicator {
 
     /**
      * Connects to the High Fidelity Audio API server and transmits the initial user data to the server.
-     * 
+     *
      * @param hifiAuthJWT  This JSON Web Token (JWT) is used by callers to associate a user with a specific High Fidelity Spatial Audio API Server.
      * JWTs are an industry-standard method for securely representing claims between two applications.
-     * 
+     *
      * **Important information about JWTs:**
      * - **Do not expose JWTs to users!** Anyone with access to one of your JWTs will be able to connect to your High Fidelity Spatial Audio API Server.
      * - In your application's production environment, each client running your app code should connect to the High Fidelity Spatial Audio Server with a unique JWT.
      * In the case of a Web application, your application server code should generate a JWT associated with the user requesting your Web application.
-     * 
+     *
      * To generate a JWT for use with the High Fidelity Audio API:
      * 1. Head to {@link https://jwt.io/} to find the appropriate library for your langauge.
      *     a. For NodeJS applications and Web applications compilied from NodeJS code, we recommend {@link https://www.npmjs.com/package/jose|jose}.
@@ -435,7 +435,7 @@ export class HiFiCommunicator {
      *     ```
      * Please reference our {@link https://www.highfidelity.com/api/guides/misc/getAJWT|"Get a JWT" guide} for additional context.
      * 4. Pass the created JWT to `connectToHiFiAudioAPIServer()`.
-     * 
+     *
      * @param signalingHostURL An URL that will be used to create a valid WebRTC signaling address at High Fidelity. The passed `signalingHostURL` parameter should not contain the protocol
      * or port - e.g. `server.highfidelity.com` - and it will be used to construct a signaling address of the form: `wss://${signalingHostURL}:${signalingPort}/?token=`
      * If the developer does not pass a `signalingHostURL` parameter, a default URL will be used instead. See: {@link DEFAULT_PROD_HIGH_FIDELITY_ENDPOINT}
@@ -443,7 +443,7 @@ export class HiFiCommunicator {
      *
      * @param signalingPort The port to use for making WebSocket connections to the High Fidelity servers.
      * If the developer does not pass a `signalingPort` parameter, the default (443) will be used instead. See: {@link DEFAULT_PROD_HIGH_FIDELITY_PORT}
-     * 
+     *
      * @returns If this operation is successful, the Promise will resolve with `{ success: true, audionetInitResponse: <The response to `audionet.init` from the server in Object format>}`.
      * If unsuccessful, the Promise will reject with `{ success: false, error: <an error message> }`.
      */
@@ -780,7 +780,7 @@ export class HiFiCommunicator {
         // end up just kicking off another set of retries. This will get
         // messaged to the user once the `disconnectFromHiFiMixer` method
         // finishes up.
-        if (! this._failureNotificationPending) this._failureNotificationPending = { success: false, error: "Connection retry attempts unsuccessful" }; 
+        if (! this._failureNotificationPending) this._failureNotificationPending = { success: false, error: "Connection retry attempts unsuccessful" };
         this._updateStateAndCallUserStateChangeHandler(HiFiConnectionStates.Failed, this._failureNotificationPending);
         this._mixerSession.disconnectFromHiFiMixer();
     }
@@ -814,17 +814,17 @@ export class HiFiCommunicator {
     /**
      * Adjusts the gain of another user for this communicator's current connection only. This is a single user version of {@link HiFiCommunicator.setOtherUserGainsForThisConnection}.
      * This can be used to provide a more comfortable listening experience for the client. If you need to perform moderation actions which apply server side, use the {@link https://docs.highfidelity.com/rest/latest/index.html|Administrative REST API}.
-     * 
+     *
      * To use this command, the communicator must currently be connected to a space. You can connect to a space using {@link connectToHiFiAudioAPIServer}.
-     * 
+     *
      * @param hashedVisitId  The hashed visit ID of the user whose gain will be adjusted.
      * Use {@link addUserDataSubscription} and {@link HiFiCommunicator.onUsersDisconnected} to keep track of the hashed visit IDs of currently connected users.
-     * 
+     *
      * When you subscribe to user data, you will get a list of {@link ReceivedHiFiAudioAPIData} objects, which each contain, at minimum, {@link ReceivedHifiAudioAPIData.hashedVisitID}s and {@link ReceivedHifiAudioAPIData.providedUserID}s for each user in the space. By inspecting each of these objects, you can associate a user with their hashed visit ID, if you know their provided user ID.
      *
      * @param gain  The relative gain to apply to the other user. By default, this is `1.0`. The gain can be any value greater or equal to `0.0`.
      * For example: a gain of `2.0` will double the loudness of the user, while a gain of `0.5` will halve the user's loudness. A gain of `0.0` will effectively mute the user.
-     * 
+     *
      * @returns If this operation is successful, the Promise will resolve with {@link SetOtherUserGainForThisConnectionResponse} with `success` equal to `true`.
      * If unsuccessful, the Promise will reject with {@link SetOtherUserGainForThisConnectionResponse} with `success` equal to `false` and `error` set to an error message describing what went wrong.
      */
@@ -838,18 +838,18 @@ export class HiFiCommunicator {
     /**
      * Adjusts the gain of one or more users for this communicator's current connection only.
      * This can be used to provide a more comfortable listening experience for the client. If you need to perform moderation actions on the server side, use the {@link https://docs.highfidelity.com/rest/latest/index.html|Administrative REST API}.
-     * 
+     *
      * To use this command, the communicator must currently be connected to a space. You can connect to a space using {@link connectToHiFiAudioAPIServer}.
-     * 
+     *
      * @param otherUserGainMap  The map between hashed visit IDs and the desired adjusted gains of users from the perspective of this client, for this connection only.
-     * 
+     *
      * Use {@link addUserDataSubscription} and {@link HiFiCommunicator.onUsersDisconnected} to keep track of the hashed visit IDs of currently connected users.
-     * 
+     *
      * When you subscribe to user data, you will get a list of {@link ReceivedHiFiAudioAPIData} objects, which each contain, at minimum, {@link ReceivedHifiAudioAPIData.hashedVisitID}s and {@link ReceivedHifiAudioAPIData.providedUserID}s for each user in the space. By inspecting each of these objects, you can associate a user with their hashed visit ID, if you know their provided user ID.
-     * 
+     *
      * The relative gain will be applied to the other user with the matching hashed visit ID. By default, this is `1.0`. The gain can be any value greater or equal to `0.0`.
      * For example: a gain of `2.0` will double the loudness of the user, while a gain of `0.5` will halve the user's loudness. A gain of `0.0` will effectively mute the user.
-     * 
+     *
      * @returns If this operation is successful, the Promise will resolve with {@link SetOtherUserGainsForThisConnectionResponse} with `success` equal to `true`.
      * If unsuccessful, the Promise will reject with {@link SetOtherUserGainsForThisConnectionResponse} with `success` equal to `false` and `error` set to an error message describing what went wrong.
      */
@@ -879,18 +879,22 @@ export class HiFiCommunicator {
      * Use this function to set the `MediaStream` associated with the user. This `MediaStream` will be sent up to the High Fidelity Audio Servers and
      * mixed with other users' audio streams. The resultant mixed stream will be sent to all connected clients.
      *
-     * **Be mindful** of supplying this stream upon initial connection when you anticipate that the user is using Bluetooth audio
-     * input and Bluetooth audio output simultaneously. Many Bluetooth audio devices do not support stereo (spatialized) audio
-     * output and microphone audio input simultaneously, including the popular combination of an iPhone and AirPods.
-     * Your users may have a better experience if they join the Server in "listen-only" mode - i.e. without microphone input - and then
-     * are asked for microphone permission later (which will force their Bluetooth output device into a lower-quality, unspatialized mono mode).
-     * 
-     * @param newInputAudioMediaStream - The new `MediaStream` to send to the High Fidelity Audio Server. If this
-     * is set to an `undefined` value, the existing input stream (if one is set) will be cleared.
-     * @param isStereo - Most microphones are mono and the default value for isStereo (`false`) will produce the usual spatial sound. 
-     * If the input stream is a stereo music stream or a stereo microphone, the application can specify `true` so that everyone will hear this 
-     * input’s left and right channels from the respective sides. However, doing so effectively gives this stream a position, but no orientation: 
-     * the left/right spatialization that everyone will hear is whatever is in the original source, regardless of the orientation of the source.
+     * **Be mindful** of supplying this stream upon initial connection when you anticipate that the user is using
+     * Bluetooth audio input and Bluetooth audio output simultaneously. Many Bluetooth audio devices do not support
+     * stereo (spatialized) audio output and microphone audio input simultaneously, including the popular combination
+     * of an iPhone and AirPods.  Your users may have a better experience if they join the Server in "listen-only"
+     * mode - i.e. without microphone input - and then are asked for microphone permission later (which will force
+     * their Bluetooth output device into a lower-quality, unspatialized mono mode).
+     *
+     * @param newInputAudioMediaStream - The new `MediaStream` to send
+     * to the High Fidelity Audio Server. If this is set to an `undefined` value, the existing input stream (if one is
+     * set) will be cleared.
+     * @param isStereo - Most microphones are mono and the default
+     * value for isStereo (`false`) will produce the usual spatial sound.  If the input stream is a stereo music
+     * stream or a stereo microphone, the application can specify `true` so that everyone will hear this input’s left
+     * and right channels from the respective sides. However, doing so effectively gives this stream a position, but
+     * no orientation: the left/right spatialization that everyone will hear is whatever is in the original source,
+     * regardless of the orientation of the source.
      * @returns `true` if the new `MediaStream` was successfully set, `false` otherwise.
      */
     async setInputAudioMediaStream(newInputAudioMediaStream: MediaStream, isStereo: boolean = false): Promise<boolean> {
@@ -904,7 +908,8 @@ export class HiFiCommunicator {
     }
 
     /**
-     * Use this function to set whether input audio stream will have the `enabled` property of each of its `MediaStreamTrack`s set to `false`
+     * Use this function to set whether input audio stream will have the `enabled` property of each of its
+     * `MediaStreamTrack`s set to `false`
      * (and an unmuted stream -- the default -- will have the `enabled` property set to `true`). This will silence the input,
      * but has specific consequences:
      *   - If you are using the same `MediaStream` object in other ways, it will be affected by
@@ -954,7 +959,7 @@ export class HiFiCommunicator {
      * Start collecting data about the WebRTC connection between Client and Server.
      * Note that the data inside the reports pertains only to payload data internal to the WebRTC connection
      * and does not include _total_ data sent over the wire or received over the wire in your application.
-     * 
+     *
      * @param callback Callback functions will be provided two Array arguments: `stats` and `prevStats`.
      * Each of those Array items contains one or more Objects, which are reports of WebRTC stats data,
      * including data such as "a timestamp", "the number of bytes received since the last report" and "current jitter buffer delay".
@@ -982,13 +987,15 @@ export class HiFiCommunicator {
      * Updates the internal copy of the User Data associated with the user associated with this client. Does **NOT** update
      * the user data on the High Fidelity Audio API server. There are no good reasons for a client to call this function
      * and _not_ update the server User Data, and thus this function is `private`.
-     * 
+     *
      * @param __namedParameters
      * @param position - The new position of the user.
      * @param orientation - The new orientation of the user (in Quaternion form)
-     * @param volumeThreshold - The new volumeThreshold of the user.  Setting this to `NaN` will reset its value to the space default volume threshold.
-     * 
-     * **COMPATIBILITY WARNING:** Currently, setting `volumeThreshold` to `null` will also reset its value to the space default volume threshold.
+     * @param volumeThreshold - The new volumeThreshold of the user.  Setting this to `NaN` will reset its value to
+     * the space default volume threshold.
+     *
+     * **COMPATIBILITY WARNING:** Currently, setting `volumeThreshold` to `null` will also reset its value to the
+         space default volume threshold.
      * In the future, the value of `volumeThreshold` will only be reset if it is set to `NaN`.
      * A `volumeThreshold` set to `null` will in the future will be treated as if `volumeThreshold` is not supplied.
      * If your spatial audio client application is currently resetting `volumeThreshold` by setting it to `null`, please change
@@ -998,11 +1005,11 @@ export class HiFiCommunicator {
      * This value also affects the distance at which User A can be heard in 3D space.
      * Higher values for User A means that User A will sound louder to other users around User A, and it also means that User A will be audible from a greater distance.
      * The new hiFiGain of the user.
-     * 
+     *
      * @param userAttenuation - This value affects how far a user's voice will travel in 3D space.
      * Setting this to `NaN` will use the space default attenuation, or, if zones are defined for the space,
      * the attenuation settings at the user's position.
-     * 
+     *
      * **COMPATIBILITY WARNING:** Currently, setting `userAttenuation` to 0 will also reset its value to the space/zone default attenuation.
      * In the future, the value of `userAttenuation` will only be reset if it is set to `NaN`.
      * A `userAttenuation` set to 0 will in the future be treated as a "broadcast mode", making
@@ -1010,11 +1017,11 @@ export class HiFiCommunicator {
      * If your spatial audio client application is currently resetting `userAttenuation` by setting it to 0, please change
      * it to set `userAttenuation` to `NaN` instead, in order for it to continue working with future versions of
      * High Fidelity's Spatial Audio API.
-     * 
+     *
      * @param userRolloff - This value affects the frequency rolloff for a given user.
      * Setting this to `NaN` or 0 will use the space default rolloff, or, if zones are defined for the space,
      * the frequency rolloff settings at the user's position.
-     * 
+     *
      * **COMPATIBILITY WARNING:** Currently, setting `userRolloff` to 0 will also reset its value to the space/zone default rolloff
      * In the future, the value of `userRolloff` will only be reset if it is set to `NaN`
      * A `userRolloff` set to 0 will in the future be treated as a valid frequency rolloff value,
@@ -1023,7 +1030,28 @@ export class HiFiCommunicator {
      * it to set `userRolloff` to `NaN` instead, in order for it to continue working with future versions of
      * High Fidelity's Spatial Audio API.
      */
-    private _updateUserData({ position, orientation, volumeThreshold, hiFiGain, userAttenuation, userRolloff }: { position?: Point3D, orientation?: Quaternion, volumeThreshold?: number, hiFiGain?: number, userAttenuation?: number, userRolloff?: number } = {}): void {
+    private _updateUserData({
+        position,
+        facing,
+        hexColor,
+        displayName,
+        profileImageURL,
+        volumeThreshold,
+        hiFiGain,
+        userAttenuation,
+        userRolloff
+    }: {
+        position?: Point3D,
+        facing?: number,
+        hexColor?: string,
+        displayName?: string,
+        profileImageURL?: string,
+        volumeThreshold?: number,
+        hiFiGain?: number,
+        userAttenuation?: number,
+        userRolloff?: number
+    } = {}): void {
+
         if (position) {
             if (!this._currentHiFiAudioAPIData.position) {
                 this._currentHiFiAudioAPIData.position = new Point3D();
@@ -1034,17 +1062,19 @@ export class HiFiCommunicator {
             this._currentHiFiAudioAPIData.position.z = position.z ?? this._currentHiFiAudioAPIData.position.z;
         }
 
-        if (orientation) {
-            if (!this._currentHiFiAudioAPIData.orientation) {
-                this._currentHiFiAudioAPIData.orientation = new Quaternion();
-            }
-
-            this._currentHiFiAudioAPIData.orientation.w = orientation.w ?? this._currentHiFiAudioAPIData.orientation.w;
-            this._currentHiFiAudioAPIData.orientation.x = orientation.x ?? this._currentHiFiAudioAPIData.orientation.x;
-            this._currentHiFiAudioAPIData.orientation.y = orientation.y ?? this._currentHiFiAudioAPIData.orientation.y;
-            this._currentHiFiAudioAPIData.orientation.z = orientation.z ?? this._currentHiFiAudioAPIData.orientation.z;
+        if (facing) {
+            this._currentHiFiAudioAPIData.facing = facing;
         }
 
+        if (hexColor) {
+            this._currentHiFiAudioAPIData.hexColor = hexColor;
+        }
+        if (displayName) {
+            this._currentHiFiAudioAPIData.displayName = displayName;
+        }
+        if (profileImageURL) {
+            this._currentHiFiAudioAPIData.profileImageURL = profileImageURL;
+        }
         if (typeof (volumeThreshold) === "number" || // May be NaN
             volumeThreshold === null) {
             this._currentHiFiAudioAPIData.volumeThreshold = volumeThreshold;
@@ -1076,7 +1106,7 @@ export class HiFiCommunicator {
      * ensure that we only send to the server the minimum set of data necessary - i.e. the difference between the data contained on the server
      * about the user and the new data that the client has locally. We use this function here to update the clientside copy of the data
      * that we last transmitted.
-     * 
+     *
      * @param dataJustTransmitted - The data that we just transmitted to the High Fidelity Audio API server.
      */
     private _updateLastTransmittedHiFiAudioAPIData(dataJustTransmitted: HiFiAudioAPIData): void {
@@ -1085,20 +1115,28 @@ export class HiFiCommunicator {
                 this._lastTransmittedHiFiAudioAPIData.position = new Point3D();
             }
 
-            this._lastTransmittedHiFiAudioAPIData.position.x = dataJustTransmitted.position.x ?? this._lastTransmittedHiFiAudioAPIData.position.x;
-            this._lastTransmittedHiFiAudioAPIData.position.y = dataJustTransmitted.position.y ?? this._lastTransmittedHiFiAudioAPIData.position.y;
-            this._lastTransmittedHiFiAudioAPIData.position.z = dataJustTransmitted.position.z ?? this._lastTransmittedHiFiAudioAPIData.position.z;
+            this._lastTransmittedHiFiAudioAPIData.position.x =
+                dataJustTransmitted.position.x ?? this._lastTransmittedHiFiAudioAPIData.position.x;
+            this._lastTransmittedHiFiAudioAPIData.position.y =
+                dataJustTransmitted.position.y ?? this._lastTransmittedHiFiAudioAPIData.position.y;
+            this._lastTransmittedHiFiAudioAPIData.position.z =
+                dataJustTransmitted.position.z ?? this._lastTransmittedHiFiAudioAPIData.position.z;
         }
 
-        if (dataJustTransmitted.orientation) {
-            if (!this._lastTransmittedHiFiAudioAPIData.orientation) {
-                this._lastTransmittedHiFiAudioAPIData.orientation = new Quaternion();
-            }
+        if (dataJustTransmitted.facing) {
+            this._lastTransmittedHiFiAudioAPIData.facing = dataJustTransmitted.facing;
+        }
 
-            this._lastTransmittedHiFiAudioAPIData.orientation.w = dataJustTransmitted.orientation.w ?? this._lastTransmittedHiFiAudioAPIData.orientation.w;
-            this._lastTransmittedHiFiAudioAPIData.orientation.x = dataJustTransmitted.orientation.x ?? this._lastTransmittedHiFiAudioAPIData.orientation.x;
-            this._lastTransmittedHiFiAudioAPIData.orientation.y = dataJustTransmitted.orientation.y ?? this._lastTransmittedHiFiAudioAPIData.orientation.y;
-            this._lastTransmittedHiFiAudioAPIData.orientation.z = dataJustTransmitted.orientation.z ?? this._lastTransmittedHiFiAudioAPIData.orientation.z;
+        if (dataJustTransmitted.hexColor) {
+            this._lastTransmittedHiFiAudioAPIData.hexColor = dataJustTransmitted.hexColor;
+        }
+
+        if (dataJustTransmitted.displayName) {
+            this._lastTransmittedHiFiAudioAPIData.displayName = dataJustTransmitted.displayName;
+        }
+
+        if (dataJustTransmitted.profileImageURL) {
+            this._lastTransmittedHiFiAudioAPIData.profileImageURL = dataJustTransmitted.profileImageURL;
         }
 
         if (typeof (dataJustTransmitted.volumeThreshold) === "number" || // May be NaN
@@ -1127,9 +1165,9 @@ export class HiFiCommunicator {
 
     /**
      * Formats the local user data properly, then sends that user data to the High Fidelity Audio API server. This transfer is rate limited.
-     * 
+     *
      * There is no reason a library user would need to call this function without also simultaneously updating User Data, so this function is `private`.
-     * 
+     *
      * @param forceTransmit - `true` if we should ignore the clientside rate limiter and send the data regardless of its status; `false` otherwise.
      * @returns If this operation is successful, returns `{ success: true, rawDataTransmitted: <the raw data that was transmitted to the server>}`. If unsuccessful, returns
      * `{ success: false, error: <an error message> }`.
@@ -1150,11 +1188,12 @@ export class HiFiCommunicator {
             }
             // Get the data to transmit, which is the difference between the last data we transmitted
             // and the current data we have stored.
-           // let delta = this._lastTransmittedHiFiAudioAPIData.diff(this._currentHiFiAudioAPIData);
-            // This function will translate the new `HiFiAudioAPIData` object from above into stringified JSON data in the proper format,
-            // then send that data to the mixer.
+            // let delta = this._lastTransmittedHiFiAudioAPIData.diff(this._currentHiFiAudioAPIData);
+            // This function will translate the new `HiFiAudioAPIData` object from above into stringified JSON data
+            // in the proper format, then send that data to the mixer.
             // The function will return the raw data that it sent to the mixer.
-            let transmitRetval = this._mixerSession._transmitHiFiAudioAPIDataToServer(this._currentHiFiAudioAPIData, this._lastTransmittedHiFiAudioAPIData);
+            let transmitRetval = this._mixerSession._transmitHiFiAudioAPIDataToServer(this._currentHiFiAudioAPIData,
+                                                                                      this._lastTransmittedHiFiAudioAPIData);
             if (transmitRetval.success) {
                 // Now we have to update our "last transmitted" `HiFiAudioAPIData` object
                 // to contain the data that we just transmitted.
@@ -1211,7 +1250,7 @@ export class HiFiCommunicator {
      * position, orientation, etc. No matter how often developers call this function, the internal data store transmission is rate-limited
      * and will only be sent to the server once every `transmitRateLimitTimeoutMS` milliseconds. When the internal data store is transmitted,
      * the most up-to-date data will be transmitted.
-     * 
+     *
      * @param newUserData - The new user data that we want to send to the High Fidelity Audio API server.
      * @returns Returns the return value of {@link _transmitHiFiAudioAPIDataToServer}.
      */
@@ -1224,8 +1263,8 @@ export class HiFiCommunicator {
     /**
      * Ingests user data updates from the server and, if relevant, calls the relevant callback functions associated with the
      * User Data Subscriptions. See {@link addUserDataSubscription}.
-     * 
-     * @param newUserDataFromServer - Contains all of the new user data most recently received from the server. 
+     *
+     * @param newUserDataFromServer - Contains all of the new user data most recently received from the server.
      */
     private _handleUserDataUpdates(newUserDataFromServer: Array<ReceivedHiFiAudioAPIData>): void {
         if (this._userDataSubscriptions.length === 0) {
@@ -1246,62 +1285,65 @@ export class HiFiCommunicator {
             for (let dataItr = 0; dataItr < newUserDataFromServer.length; dataItr++) {
                 let currentDataFromServer = newUserDataFromServer[dataItr];
 
-                if (currentSubscription.providedUserID && currentDataFromServer.providedUserID !== currentSubscription.providedUserID) {
-                    continue;
-                }
+                // if (currentSubscription.providedUserID && currentDataFromServer.providedUserID !== currentSubscription.providedUserID) {
+                //     continue;
+                // }
 
-                let newCallbackData = new ReceivedHiFiAudioAPIData();
+                // let newCallbackData = new ReceivedHiFiAudioAPIData();
 
-                if (typeof (currentDataFromServer.providedUserID) === "string") {
-                    newCallbackData.providedUserID = currentDataFromServer.providedUserID;
-                }
+                // if (typeof (currentDataFromServer.providedUserID) === "string") {
+                //     newCallbackData.providedUserID = currentDataFromServer.providedUserID;
+                // }
 
-                if (typeof (currentDataFromServer.hashedVisitID) === "string") {
-                    newCallbackData.hashedVisitID = currentDataFromServer.hashedVisitID;
-                }
+                // if (typeof (currentDataFromServer.hashedVisitID) === "string") {
+                //     newCallbackData.hashedVisitID = currentDataFromServer.hashedVisitID;
+                // }
 
-                let shouldPushNewCallbackData = false;
+                // let shouldPushNewCallbackData = false;
 
-                for (let componentItr = 0; componentItr < currentSubscription.components.length; componentItr++) {
-                    let currentComponent = currentSubscription.components[componentItr];
+                // for (let componentItr = 0; componentItr < currentSubscription.components.length; componentItr++) {
+                //     let currentComponent = currentSubscription.components[componentItr];
 
-                    switch (currentComponent) {
-                        case AvailableUserDataSubscriptionComponents.Position:
-                            if (currentDataFromServer.position) {
-                                newCallbackData.position = currentDataFromServer.position;
-                                shouldPushNewCallbackData = true;
-                            }
-                            break;
+                //     switch (currentComponent) {
+                //         case AvailableUserDataSubscriptionComponents.Position:
+                //             if (currentDataFromServer.position) {
+                //                 newCallbackData.position = currentDataFromServer.position;
+                //                 shouldPushNewCallbackData = true;
+                //             }
+                //             break;
 
-                        case AvailableUserDataSubscriptionComponents.Orientation:
-                            if (currentDataFromServer.orientation) {
-                                newCallbackData.orientation = currentDataFromServer.orientation;
-                                shouldPushNewCallbackData = true;
-                            }
-                            break;
+                //         case AvailableUserDataSubscriptionComponents.Orientation:
+                //             if (currentDataFromServer.facing) {
+                //                 newCallbackData.facing = currentDataFromServer.facing;
+                //                 shouldPushNewCallbackData = true;
+                //             }
+                //             break;
 
-                        case AvailableUserDataSubscriptionComponents.VolumeDecibels:
-                            if (typeof (currentDataFromServer.volumeDecibels) === "number") {
-                                newCallbackData.volumeDecibels = currentDataFromServer.volumeDecibels;
-                                shouldPushNewCallbackData = true;
-                            }
-                            break;
+                //         case AvailableUserDataSubscriptionComponents.VolumeDecibels:
+                //             if (typeof (currentDataFromServer.volumeDecibels) === "number") {
+                //                 newCallbackData.volumeDecibels = currentDataFromServer.volumeDecibels;
+                //                 shouldPushNewCallbackData = true;
+                //             }
+                //             break;
 
-                        case AvailableUserDataSubscriptionComponents.IsStereo:
-                            if (typeof (currentDataFromServer.isStereo) === "boolean") {
-                                newCallbackData.isStereo = currentDataFromServer.isStereo;
-                                shouldPushNewCallbackData = true;
-                            }
-                            break;
-                    }
-                }
+                //         case AvailableUserDataSubscriptionComponents.IsStereo:
+                //             if (typeof (currentDataFromServer.isStereo) === "boolean") {
+                //                 newCallbackData.isStereo = currentDataFromServer.isStereo;
+                //                 shouldPushNewCallbackData = true;
+                //             }
+                //             break;
+                //     }
+                // }
 
-                if (shouldPushNewCallbackData) {
-                    currentSubscriptionCallbackData.push(newCallbackData);
-                }
+                // if (shouldPushNewCallbackData) {
+                //     currentSubscriptionCallbackData.push(newCallbackData);
+                // }
+
+                currentSubscriptionCallbackData.push(currentDataFromServer);
             }
 
             if (currentSubscription.callback && currentSubscriptionCallbackData.length > 0) {
+                console.log("currentSubscriptionCallbackData: " + JSON.stringify(currentSubscriptionCallbackData))
                 currentSubscription.callback(currentSubscriptionCallbackData);
             }
         }
@@ -1321,14 +1363,17 @@ export class HiFiCommunicator {
     }
 
     /**
-     * Adds a new User Data Subscription to the list of clientside Subscriptions. User Data Subscriptions are used to obtain
-     * User Data about other Users. For example, if you set up a User Data Subscription for your own User Data, you can use that subscription 
-     * to ensure that the data on the High Fidelity Audio API Server is the same as the data you are sending
-     * to it from the client. 
-     * 
+     * Adds a new User Data Subscription to the list of clientside
+     * Subscriptions. User Data Subscriptions are used to obtain User
+     * Data about other Users. For example, if you set up a User Data
+     * Subscription for your own User Data, you can use that
+     * subscription to ensure that the data on the High Fidelity Audio
+     * API Server is the same as the data you are sending to it from
+     * the client.
+     *
      * To check if a user has disconnected, use {@link HiFiCommunicator.onUsersDisconnected}.
-     * 
-     * @param newSubscription - The new User Data Subscription associated with a user. 
+     *
+     * @param newSubscription - The new User Data Subscription associated with a user.
      */
     addUserDataSubscription(newSubscription: UserDataSubscription): void {
         if (!this._mixerSession) {
