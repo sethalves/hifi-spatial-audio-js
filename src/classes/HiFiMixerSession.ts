@@ -428,7 +428,6 @@ export class HiFiMixerSession {
                 var clientUpdates : ClientUpdates = serverMessage.messageDetails.clientUpdates;
                 let allNewUserData: Array<ReceivedHiFiAudioAPIData> = [];
                 for (var setClientData of clientUpdates.clientData) {
-                    console.log("QQQQ handleRAVISessionBinaryData got " + JSON.stringify(SetClientData.toJSON(setClientData)))
                     var clientID : string = protoUUIDToUuid(setClientData.id)
                     let newUserData : ReceivedHiFiAudioAPIData = new ReceivedHiFiAudioAPIData();
                     newUserData.hashedVisitID = clientID;
@@ -444,13 +443,13 @@ export class HiFiMixerSession {
                         }
                         newUserData.facing = setClientData.clientPosition.facing;
                     }
-                    if (setClientData.volume) { newUserData.volume = setClientData.volume; }
-                    if (setClientData.hexColor) { newUserData.hexColor = setClientData.hexColor; }
-                    if (setClientData.displayName) { newUserData.displayName = setClientData.displayName; }
-                    if (setClientData.profileImageURL) { newUserData.profileImageURL = setClientData.profileImageURL; }
-                    if (setClientData.volumeThreshold) { newUserData.volumeThreshold = setClientData.volumeThreshold; }
-                    if (setClientData.userAttenuation) { newUserData.userAttenuation = setClientData.userAttenuation; }
-                    if (setClientData.userRolloff) { newUserData.userRolloff = setClientData.userRolloff; }
+                    if (setClientData.volume !== null) { newUserData.volume = setClientData.volume; }
+                    if (setClientData.hexColor !== null) { newUserData.hexColor = setClientData.hexColor; }
+                    if (setClientData.displayName !== null) { newUserData.displayName = setClientData.displayName; }
+                    if (setClientData.profileImageURL !== null) { newUserData.profileImageURL = setClientData.profileImageURL; }
+                    if (setClientData.volumeThreshold !== null) { newUserData.volumeThreshold = setClientData.volumeThreshold; }
+                    if (setClientData.userAttenuation !== null) { newUserData.userAttenuation = setClientData.userAttenuation; }
+                    if (setClientData.userRolloff !== null) { newUserData.userRolloff = setClientData.userRolloff; }
                     allNewUserData.push(newUserData);
                 }
 

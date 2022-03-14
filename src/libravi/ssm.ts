@@ -465,7 +465,7 @@ export const SetClientData = {
       ).ldelim();
     }
     if (message.volume !== undefined) {
-      writer.uint32(29).float(message.volume);
+      writer.uint32(24).int32(message.volume);
     }
     if (message.hexColor !== undefined) {
       writer.uint32(34).string(message.hexColor);
@@ -505,7 +505,7 @@ export const SetClientData = {
           );
           break;
         case 3:
-          message.volume = reader.float();
+          message.volume = reader.int32();
           break;
         case 4:
           message.hexColor = reader.string();
@@ -567,7 +567,7 @@ export const SetClientData = {
       (obj.clientPosition = message.clientPosition
         ? ClientPosition.toJSON(message.clientPosition)
         : undefined);
-    message.volume !== undefined && (obj.volume = message.volume);
+    message.volume !== undefined && (obj.volume = Math.round(message.volume));
     message.hexColor !== undefined && (obj.hexColor = message.hexColor);
     message.displayName !== undefined &&
       (obj.displayName = message.displayName);

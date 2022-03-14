@@ -682,7 +682,6 @@ export class RaviCommandController {
     }.bind(this);
 
     this._inputDataChannel.onmessage = function (message: any) {
-      RaviUtils.log("_inputDataChannel got message: " + (message.data), "RaviCommandController");
         var commandInstance = this._commandQueueMap.get(_BINARY_COMMAND_KEY);
         for (var listener of commandInstance.listener) {
             listener._handler(message.data)

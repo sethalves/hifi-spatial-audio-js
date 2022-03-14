@@ -1338,7 +1338,6 @@ export class HiFiCommunicator {
             }
 
             if (currentSubscription.callback && currentSubscriptionCallbackData.length > 0) {
-                console.log("currentSubscriptionCallbackData: " + JSON.stringify(currentSubscriptionCallbackData))
                 currentSubscription.callback(currentSubscriptionCallbackData);
             }
         }
