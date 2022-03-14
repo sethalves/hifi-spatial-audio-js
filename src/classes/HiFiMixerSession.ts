@@ -226,11 +226,6 @@ export class HiFiMixerSession {
     private _outputAudioMediaStream: MediaStream;
 
     /**
-     * Only valid for users covered by a user data subscription. Remains constant at disconnect until the next connect.
-     */
-    public concurrency:number = 0;
-
-    /**
      * The WebRTC Stats Observer callback
      */
     private _statsObserverCallback: Function;
@@ -465,8 +460,11 @@ export class HiFiMixerSession {
                 break;
 
             case "disconnectClient":
-                console.log("XXX got disconnectClient");
-                // onUsersDisconnected
+                var disconnectClient : DisconnectClient = serverMessage.messageDetails.disconnectClient;
+                var clientID : string = protoUUIDToUuid(disconnectClient.id)
+                if (this.onUsersDisconnected) {
+                    this.onUsersDisconnected(clientID);
+                }
                 break;
         }
     }
@@ -567,7 +565,6 @@ export class HiFiMixerSession {
         })
         .finally(() => {
             this._raviSignalingConnection.removeStateChangeHandler(tempUnavailableStateHandler);
-            this.concurrency = 0;
             this._tryingToConnect = false;
         });
 

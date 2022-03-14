@@ -379,7 +379,7 @@ export class HiFiCommunicator {
         this._mixerSession = new HiFiMixerSession({
             "userDataStreamingScope": userDataStreamingScope,
             "onUserDataUpdated": (data: Array<ReceivedHiFiAudioAPIData>) => { this._handleUserDataUpdates(data); },
-            "onUsersDisconnected": (data: Array<ReceivedHiFiAudioAPIData>) => { this._onUsersDisconnected(data); },
+            "onUsersDisconnected": (clientID : string) => { this._onUsersDisconnected(clientID); },
             "onConnectionStateChanged": (state: HiFiConnectionStates, message: HiFiConnectionAttemptResult) => { this._manageConnection(state, message); },
             "onMuteChanged": onMuteChanged,
             "getUserFacingConnectionState": this.getConnectionState.bind(this),
@@ -1351,9 +1351,9 @@ export class HiFiCommunicator {
      * `HiFiCommunicator.onUsersDisconnected` after instantiation.
      * @param usersDisconnected - An Array of {@link ReceivedHiFiAudioAPIData} regarding the users who disconnected.
      */
-    private _onUsersDisconnected(usersDisconnected: Array<ReceivedHiFiAudioAPIData>): void {
+    private _onUsersDisconnected(clientID: string): void {
         if (this.onUsersDisconnected) {
-            this.onUsersDisconnected(usersDisconnected);
+            this.onUsersDisconnected(clientID);
         }
     }
 

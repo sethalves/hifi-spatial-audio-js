@@ -148,7 +148,6 @@ export class Diagnostics {
             this.connectionStats('mixerStats') +
             this.rtpStats() +
             this.rtcStates() +
-            this.s('NUM_CONNECTED', this.session.concurrency, '\n') +
             this.s('APPSTATE', this.session.getCurrentHiFiConnectionState(), '\n') +
             this.s('RAVISTATE', this.ravi.getState()) +
             this.s('ONLINE', xNavigator.onLine ? 'yes' : 'no') +
