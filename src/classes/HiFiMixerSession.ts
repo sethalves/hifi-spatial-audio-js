@@ -52,6 +52,18 @@ const PERSONAL_VOLUME_ADJUST_TIMEOUT_MS = 5000;
 type ConnectionStateChangeHandler = (state: HiFiConnectionStates, result: HiFiConnectionAttemptResult) => void;
 
 
+
+function pointsNearlyTheSame(a : Point3D, b : Point3D) : boolean {
+    if (!a && !b) return true;
+    if (!a) return false;
+    if (!b) return false;
+    if (Math.abs(a.x - b.x) > 0.001) return false;
+    if (Math.abs(a.y - b.y) > 0.001) return false;
+    if (Math.abs(a.z - b.z) > 0.001) return false;
+    return true;
+}
+
+
 function protoUUIDToUuid(u : Uuid) : string {
     var asBytes : any = u.value;
     return uuidStringify(asBytes);
@@ -457,227 +469,6 @@ export class HiFiMixerSession {
                 // onUsersDisconnected
                 break;
         }
-
-
-        // let unGZippedData = pako.ungzip(data, { to: 'string' });
-        // let jsonData = JSON.parse(unGZippedData);
-
-        // if (jsonData.deleted_visit_ids) {
-        //     let allDeletedUserData: Array<ReceivedHiFiAudioAPIData> = [];
-
-        //     let deletedVisitIDs = jsonData.deleted_visit_ids;
-        //     for (const deletedVisitID of deletedVisitIDs) {
-        //         let hashedVisitID = deletedVisitID;
-
-        //         let deletedUserData = new ReceivedHiFiAudioAPIData({
-        //             hashedVisitID: hashedVisitID
-        //         });
-
-        //         let mixerPeerKeys = Object.keys(this._mixerPeerKeyToStateCacheDict);
-        //         for (const mixerPeerKey of mixerPeerKeys) {
-        //             if (this._mixerPeerKeyToStateCacheDict[mixerPeerKey].hashedVisitID === hashedVisitID) {
-        //                 if (this._mixerPeerKeyToStateCacheDict[mixerPeerKey].providedUserID) {
-        //                     deletedUserData.providedUserID = this._mixerPeerKeyToStateCacheDict[mixerPeerKey].providedUserID;
-        //                 }
-        //                 // TODO: remove the entry from the peer state cache -- is this OK?
-        //                 //delete this._mixerPeerKeyToStateCacheDict[mixerPeerKey];
-        //                 break;
-        //             }
-        //         }
-
-        //         allDeletedUserData.push(deletedUserData);
-        //     }
-
-        //     // TODO: remove the entry from the peer state cache
-        //     this.concurrency -= allDeletedUserData.length;
-        //     if (this.onUsersDisconnected && allDeletedUserData.length > 0) {
-        //         this.onUsersDisconnected(allDeletedUserData);
-        //     }
-        // }
-
-        // if (jsonData.peers) {
-        //     let allNewUserData: Array<ReceivedHiFiAudioAPIData> = [];
-
-        //     let peerKeys = Object.keys(jsonData.peers);
-        //     for (let itr = 0; itr < peerKeys.length; itr++) {
-        //         let peerDataFromMixer = jsonData.peers[peerKeys[itr]];
-
-        //         // See {@link this._mixerPeerKeyToStateCacheDict}.
-        //         let userDataCache: ReceivedHiFiAudioAPIData;
-        //         // If it is a known peer, we should have an entry for it in the cache dict
-        //         if (this._mixerPeerKeyToStateCacheDict[peerKeys[itr]]) {
-        //             userDataCache = this._mixerPeerKeyToStateCacheDict[peerKeys[itr]] as ReceivedHiFiAudioAPIData;
-        //         }
-        //         // if not let's create it.
-        //         else {
-        //             userDataCache = new ReceivedHiFiAudioAPIData();
-        //             this._mixerPeerKeyToStateCacheDict[peerKeys[itr]] = userDataCache;
-        //             this.concurrency += 1;
-        //         }
-
-        //         // This is a new empty data that will collect the changes received from the server.
-        //         // as we collect the changes from the received data, we will also update the userDataCache associated with that peer.
-        //         let newUserData = new ReceivedHiFiAudioAPIData();
-
-        //         // `.J` is the 'providedUserID'
-        //         if (userDataCache.providedUserID) {
-        //             // already  defined, should be the same initial value.
-        //             newUserData.providedUserID = userDataCache.providedUserID;
-        //         } else if (typeof (peerDataFromMixer.J) === "string") {
-        //             userDataCache.providedUserID = peerDataFromMixer.J;
-        //             newUserData.providedUserID = peerDataFromMixer.J;
-        //         }
-
-        //         // `.e` is the `hashedVisitID`, which is a hashed version of the random UUID that a connecting client
-        //         // sends as the `session` key inside the argument to the `audionet.init` command.
-        //         // It is used to identify a given client across a cloud of mixers.
-        //         if (userDataCache.hashedVisitID) {
-        //             // already  defined, should be the same initial value.
-        //             newUserData.hashedVisitID = userDataCache.hashedVisitID;
-        //         } else if (typeof (peerDataFromMixer.e) === "string") {
-        //             userDataCache.hashedVisitID = peerDataFromMixer.e;
-        //             newUserData.hashedVisitID = peerDataFromMixer.e;
-        //         }
-
-        //         let serverSentNewUserData = false;
-
-        //         // `ReceivedHiFiAudioAPIData.position.*`
-        //         let serverSentNewPosition = false;
-        //         if (typeof (peerDataFromMixer.x) === "number") {
-        //             if (!userDataCache.position) {
-        //                 userDataCache.position = new Point3D();
-        //             }
-        //             // Mixer sends position data in millimeters
-        //             userDataCache.position.x = peerDataFromMixer.x / 1000;
-        //             serverSentNewPosition = true;
-        //         }
-        //         if (typeof (peerDataFromMixer.y) === "number") {
-        //             if (!userDataCache.position) {
-        //                 userDataCache.position = new Point3D();
-        //             }
-        //             // Mixer sends position data in millimeters
-        //             userDataCache.position.y = peerDataFromMixer.y / 1000;
-        //             serverSentNewPosition = true;
-        //         }
-        //         if (typeof (peerDataFromMixer.z) === "number") {
-        //             if (!userDataCache.position) {
-        //                 userDataCache.position = new Point3D();
-        //             }
-        //             // Mixer sends position data in millimeters
-        //             userDataCache.position.z = peerDataFromMixer.z / 1000;
-        //             serverSentNewPosition = true;
-        //         }
-        //         if (serverSentNewPosition) {
-        //             // We received a new position and updated the cache entry.
-        //             // Need to add the new position value in the newUserData
-        //             if (this._coordFrameUtil == null) {
-        //                 // HiFi- and World-frame are assumed compatible --> copy position straight across
-        //                 newUserData.position = userDataCache.position;
-        //             } else {
-        //                 // convert the received position from HiFi- to World-frame
-        //                 newUserData.position = this._coordFrameUtil.HiFiPositionToWorld(userDataCache.position);
-        //             }
-        //             serverSentNewUserData = true;
-        //         }
-
-        //         // `ReceivedHiFiAudioAPIData.orientation.*`
-        //         let serverSentNewOrientation = false;
-        //         if (typeof (peerDataFromMixer.W) === "number") {
-        //             if (!userDataCache.orientation) {
-        //                 userDataCache.orientation = new Quaternion();
-        //             }
-        //             userDataCache.orientation.w = peerDataFromMixer.W / 1000;
-        //             serverSentNewOrientation = true;
-        //         }
-        //         if (typeof (peerDataFromMixer.X) === "number") {
-        //             if (!userDataCache.orientation) {
-        //                 userDataCache.orientation = new Quaternion();
-        //             }
-        //             userDataCache.orientation.x = peerDataFromMixer.X / 1000;
-        //             serverSentNewOrientation = true;
-        //         }
-        //         if (typeof (peerDataFromMixer.Y) === "number") {
-        //             if (!userDataCache.orientation) {
-        //                 userDataCache.orientation = new Quaternion();
-        //             }
-        //             userDataCache.orientation.y = peerDataFromMixer.Y / 1000;
-        //             serverSentNewOrientation = true;
-        //         }
-        //         if (typeof (peerDataFromMixer.Z) === "number") {
-        //             if (!userDataCache.orientation) {
-        //                 userDataCache.orientation = new Quaternion();
-        //             }
-        //             userDataCache.orientation.z = peerDataFromMixer.Z / 1000;
-        //             serverSentNewOrientation = true;
-        //         }
-        //         // We received a new orientation and updated the cache entry.
-        //         // Need to add the new orientation value in the newUserData
-        //         if (serverSentNewOrientation) {
-        //             if (this._coordFrameUtil == null) {
-        //                 newUserData.orientation = new Quaternion({
-        //                     w: userDataCache.orientation.w,
-        //                     x: userDataCache.orientation.x,
-        //                     y: userDataCache.orientation.y,
-        //                     z: userDataCache.orientation.z});
-        //             } else {
-        //                 newUserData.orientation = this._coordFrameUtil.HiFiOrientationToWorld(userDataCache.orientation);
-        //             }
-        //             serverSentNewUserData = true;
-        //         }
-
-        //         // `ReceivedHiFiAudioAPIData.volumeDecibels`
-        //         if (typeof (peerDataFromMixer.v) === "number") {
-        //             userDataCache.volumeDecibels = peerDataFromMixer.v;
-        //             newUserData.volumeDecibels = peerDataFromMixer.v;
-        //             serverSentNewUserData = true;
-        //         }
-
-        //         // `ReceivedHiFiAudioAPIData.isStereo`
-        //         if (typeof (peerDataFromMixer.s) === "boolean") {
-        //             userDataCache.isStereo = peerDataFromMixer.s;
-        //             newUserData.isStereo = peerDataFromMixer.s;
-        //             serverSentNewUserData = true;
-        //         }
-
-        //         // the newUserData AND the userDataCache have been updated with the new values
-        //         // propagate newUserData to user space
-        //         if (serverSentNewUserData) {
-        //             allNewUserData.push(newUserData);
-        //         }
-        //     }
-
-        //     if (this.onUserDataUpdated && allNewUserData.length > 0) {
-        //         this.onUserDataUpdated(allNewUserData);
-        //     }
-        // }
-
-        // if (jsonData.instructions) {
-        //     for (const instruction of jsonData.instructions) {
-        //         if (!Array.isArray(instruction) || !instruction.length) {
-        //             continue;
-        //         }
-
-        //         let instructionName = instruction[0];
-        //         let instructionArguments = instruction.slice(1);
-        //         if (instructionName === "mute") {
-        //             let shouldBeMuted: boolean;
-        //             if (instructionArguments.length >= 1) {
-        //                 if (typeof(instructionArguments[0]) === "boolean") {
-        //                     shouldBeMuted = instructionArguments[0];
-        //                 }
-        //             }
-        //             if (shouldBeMuted !== undefined) {
-        //                 this._setMutedByAdmin(shouldBeMuted, MuteReason.ADMIN);
-        //             }
-        //         } else if (instructionName === "terminate") {
-        //             // all reasons for termination currently should result in a disconnect
-        //             // so that the client doesn't try to automatically reconnect.  Reasons
-        //             // will be either kick or user timeout.
-        //             this._disableReconnect = true;
-        //             this._disconnectFromHiFiMixer();
-        //         }
-        //     }
-        // }
     }
 
     /**
@@ -1336,61 +1127,85 @@ export class HiFiMixerSession {
                 error: `Can't transmit data to mixer; not connected to mixer.`
             };
         }
-
-        // let dataForMixer = this._getDataToTransmitToMixer(currentHifiAudioAPIData, previousHifiAudioAPIData);
-
         let commandController = this._raviSession.getCommandController();
 
         if (commandController) {
 
+            var doSend = false;
             var setClientData : SetClientData = {
                 id : RaviUtils.uuidToProtoUUID(this._raviSession.getUUID())
             };
 
             if (currentHifiAudioAPIData.position || currentHifiAudioAPIData.facing) {
-                if (!setClientData.clientPosition) {
-                    setClientData.clientPosition = { x: 0, y: 0, facing: 0 };
-                }
-                if (previousHifiAudioAPIData.position) {
+                if (currentHifiAudioAPIData.position &&
+                    !pointsNearlyTheSame(currentHifiAudioAPIData.position, previousHifiAudioAPIData.position)) {
                     setClientData.clientPosition = {
-                        x: Math.round(previousHifiAudioAPIData.position.x * 1000),
-                        y: Math.round(previousHifiAudioAPIData.position.z * 1000),
-                        facing: previousHifiAudioAPIData.facing
-                    };
+                        x : Math.round(currentHifiAudioAPIData.position.x * 1000),
+                        y : Math.round(currentHifiAudioAPIData.position.z * 1000),
+                        facing : previousHifiAudioAPIData.facing
+                    }
+                    doSend = true;
                 }
-                if (currentHifiAudioAPIData.position) {
-                    setClientData.clientPosition.x = Math.round(currentHifiAudioAPIData.position.x * 1000);
-                    setClientData.clientPosition.y = Math.round(currentHifiAudioAPIData.position.z * 1000);
-                }
-                if (currentHifiAudioAPIData.facing) {
+                if (currentHifiAudioAPIData.facing && currentHifiAudioAPIData.facing != previousHifiAudioAPIData.facing) {
+                    if (!setClientData.clientPosition) {
+                        setClientData.clientPosition = {
+                            x : Math.round(previousHifiAudioAPIData.position.x * 1000),
+                            y : Math.round(previousHifiAudioAPIData.position.z * 1000),
+                            facing : 0.0
+                        }
+                    }
                     setClientData.clientPosition.facing = currentHifiAudioAPIData.facing;
+                    doSend = true;
+                } else if (setClientData.clientPosition) {
+                    setClientData.clientPosition.facing = previousHifiAudioAPIData.facing;
                 }
             }
 
-            if (currentHifiAudioAPIData.hiFiGain) {
-                setClientData.volume = currentHifiAudioAPIData.hiFiGain;
-            }
-            if (currentHifiAudioAPIData.volume) {
-                setClientData.volume = currentHifiAudioAPIData.volume;
-            }
-            if (currentHifiAudioAPIData.hexColor) {
+            // if (currentHifiAudioAPIData.hiFiGain && currentHifiAudioAPIData.hiFiGain != previousHifiAudioAPIData.hiFiGain) {
+            //     setClientData.volume = currentHifiAudioAPIData.hiFiGain;
+            //     doSend = true;
+            // }
+            // if (currentHifiAudioAPIData.volume) {
+            //     setClientData.volume = currentHifiAudioAPIData.volume;
+            // }
+            if (currentHifiAudioAPIData.hexColor && currentHifiAudioAPIData.hexColor != previousHifiAudioAPIData.hexColor) {
                 setClientData.hexColor = currentHifiAudioAPIData.hexColor;
+                doSend = true;
             }
-            if (currentHifiAudioAPIData.displayName) {
+            if (currentHifiAudioAPIData.displayName &&
+                currentHifiAudioAPIData.displayName != previousHifiAudioAPIData.displayName) {
                 setClientData.displayName = currentHifiAudioAPIData.displayName;
+                doSend = true;
             }
-            if (currentHifiAudioAPIData.profileImageURL) {
+            if (currentHifiAudioAPIData.profileImageURL &&
+                currentHifiAudioAPIData.profileImageURL != previousHifiAudioAPIData.profileImageURL) {
                 setClientData.profileImageURL = currentHifiAudioAPIData.profileImageURL;
+                doSend = true;
             }
-            if (currentHifiAudioAPIData.volumeThreshold) {
+            if (currentHifiAudioAPIData.volumeThreshold &&
+                currentHifiAudioAPIData.volumeThreshold != previousHifiAudioAPIData.volumeThreshold) {
                 setClientData.volumeThreshold = currentHifiAudioAPIData.volumeThreshold;
+                doSend = true;
             }
-            if (currentHifiAudioAPIData.userAttenuation) {
+            if (currentHifiAudioAPIData.userAttenuation &&
+                currentHifiAudioAPIData.userAttenuation != previousHifiAudioAPIData.userAttenuation) {
                 setClientData.userAttenuation = currentHifiAudioAPIData.userAttenuation;
+                doSend = true;
             }
-            if (currentHifiAudioAPIData.userRolloff) {
+            if (currentHifiAudioAPIData.userRolloff &&
+                currentHifiAudioAPIData.userRolloff != previousHifiAudioAPIData.userRolloff) {
                 setClientData.userRolloff = currentHifiAudioAPIData.userRolloff;
+                doSend = true;
             }
+
+
+            if (!doSend) {
+                return {
+                    success: false,
+                    error: `nothing changed`
+                };
+            }
+
             var clientMessage: ClientMessage = {
                 messageType: ClientMessage_MessageType.SET_CLIENT_DATA,
                 requestDetails: {
@@ -1398,8 +1213,6 @@ export class HiFiMixerSession {
                     setClientData : setClientData
                 }
             };
-
-            // Encode and send
             var msg = ClientMessage.encode(clientMessage).finish();
             if (commandController.sendInput(msg)) {
                 return {

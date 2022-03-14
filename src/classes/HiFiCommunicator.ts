@@ -1186,12 +1186,7 @@ export class HiFiCommunicator {
                     }
                 }, this.transmitRateLimitTimeoutMS);
             }
-            // Get the data to transmit, which is the difference between the last data we transmitted
-            // and the current data we have stored.
-            // let delta = this._lastTransmittedHiFiAudioAPIData.diff(this._currentHiFiAudioAPIData);
-            // This function will translate the new `HiFiAudioAPIData` object from above into stringified JSON data
-            // in the proper format, then send that data to the mixer.
-            // The function will return the raw data that it sent to the mixer.
+
             let transmitRetval = this._mixerSession._transmitHiFiAudioAPIDataToServer(this._currentHiFiAudioAPIData,
                                                                                       this._lastTransmittedHiFiAudioAPIData);
             if (transmitRetval.success) {
