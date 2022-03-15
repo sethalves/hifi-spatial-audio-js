@@ -46,6 +46,8 @@ if (!isBrowser) {
     }
 }
 
+const ROT_ADJUST = Math.PI / 2.0;
+
 const INIT_TIMEOUT_MS = 5000;
 const PERSONAL_VOLUME_ADJUST_TIMEOUT_MS = 5000;
 
@@ -441,7 +443,7 @@ export class HiFiMixerSession {
                         } else {
                             newUserData.position = position;
                         }
-                        newUserData.facing = setClientData.clientPosition.facing;
+                        newUserData.facing = setClientData.clientPosition.facing - ROT_ADJUST;
                     }
                     if (setClientData.volume !== null) { newUserData.volume = setClientData.volume; }
                     if (setClientData.hexColor !== null) { newUserData.hexColor = setClientData.hexColor; }
@@ -1138,7 +1140,7 @@ export class HiFiMixerSession {
                     setClientData.clientPosition = {
                         x : Math.round(currentHifiAudioAPIData.position.x * 1000),
                         y : Math.round(currentHifiAudioAPIData.position.z * 1000),
-                        facing : previousHifiAudioAPIData.facing
+                        facing : previousHifiAudioAPIData.facing + ROT_ADJUST
                     }
                     doSend = true;
                 }
@@ -1147,13 +1149,13 @@ export class HiFiMixerSession {
                         setClientData.clientPosition = {
                             x : Math.round(previousHifiAudioAPIData.position.x * 1000),
                             y : Math.round(previousHifiAudioAPIData.position.z * 1000),
-                            facing : 0.0
+                            facing : 0.0 + ROT_ADJUST
                         }
                     }
-                    setClientData.clientPosition.facing = currentHifiAudioAPIData.facing;
+                    setClientData.clientPosition.facing = currentHifiAudioAPIData.facing + ROT_ADJUST;
                     doSend = true;
                 } else if (setClientData.clientPosition) {
-                    setClientData.clientPosition.facing = previousHifiAudioAPIData.facing;
+                    setClientData.clientPosition.facing = previousHifiAudioAPIData.facing + ROT_ADJUST;
                 }
             }
 

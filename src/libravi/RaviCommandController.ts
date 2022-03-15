@@ -681,7 +681,8 @@ export class RaviCommandController {
       RaviUtils.log("_inputDataChannel onclose, state is " + this._inputDataChannel.readyState, "RaviCommandController");
     }.bind(this);
 
-    this._inputDataChannel.onmessage = function (message: any) {
+    this._inputDataChannel.binaryType = "arraybuffer";
+    this._inputDataChannel.onmessage = function (message : MessageEvent) {
         var commandInstance = this._commandQueueMap.get(_BINARY_COMMAND_KEY);
         for (var listener of commandInstance.listener) {
             listener._handler(message.data)
