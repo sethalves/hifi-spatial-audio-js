@@ -445,7 +445,12 @@ export class HiFiMixerSession {
                         }
                         newUserData.facing = setClientData.clientPosition.facing - ROT_ADJUST;
                     }
-                    if (setClientData.volume !== null) { newUserData.volume = setClientData.volume; }
+                    if (setClientData.volume !== null) {
+                        const LEVEL_CONVERSION_RATIO = 2.0; // scale dB to 0.5dB
+                        const LEVEL_CONVERSION_OFFSET = 255 - 60.0; // translate +30dB to max
+                        // convert byte back to dBFS
+                        newUserData.volume = (setClientData.volume - LEVEL_CONVERSION_OFFSET) * (1.0 / LEVEL_CONVERSION_RATIO);
+                    }
                     if (setClientData.hexColor !== null) { newUserData.hexColor = setClientData.hexColor; }
                     if (setClientData.displayName !== null) { newUserData.displayName = setClientData.displayName; }
                     if (setClientData.profileImageURL !== null) { newUserData.profileImageURL = setClientData.profileImageURL; }
