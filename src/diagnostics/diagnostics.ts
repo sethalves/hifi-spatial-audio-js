@@ -113,7 +113,7 @@ export class Diagnostics {
         this.persist(reportString, 'preemptive', false); // Save in case the browser doesn't give us enough time to send.
         if (! await this.report(reportString)) {
             this.persist(reportString, 'failed');
-        } else { // Successful report. 
+        } else { // Successful report.
             xStorage.removeItem(this.label);
         }
     }
@@ -313,7 +313,7 @@ export class Diagnostics {
     }
     static stopStats(session:HiFiMixerSession) {
         if (!nStatsClients) return;
-        if (--nStatsClients > 0) return;   // Someone is still primed.     
+        if (--nStatsClients > 0) return;   // Someone is still primed.
         session.stopCollectingWebRTCStats();
         browserStats = remoteStats = {};
         for (let key in reports) { reports[key] = {}; }

@@ -21,11 +21,11 @@ export class HiFiConstants {
     /**
      * The production endpoint for our High Fidelity audio connections.
      */
-    static DEFAULT_PROD_HIGH_FIDELITY_ENDPOINT: string = "api.highfidelity.com";
+    static DEFAULT_PROD_HIGH_FIDELITY_ENDPOINT: string = window.location.host; // "api.highfidelity.com";
     /**
      * The default port for signaling connections to our High Fidelity audio servers.
      */
-    static DEFAULT_PROD_HIGH_FIDELITY_PORT: number = 8989;
+    static DEFAULT_PROD_HIGH_FIDELITY_PORT: number = 8989; // 443;
     /**
      * The default settings for handling connection timeouts and retries.
      * See {@link ConnectionRetryAndTimeoutConfig}
