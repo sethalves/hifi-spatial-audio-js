@@ -56,6 +56,19 @@ const PERSONAL_VOLUME_ADJUST_TIMEOUT_MS = 5000;
 type ConnectionStateChangeHandler = (state: HiFiConnectionStates, result: HiFiConnectionAttemptResult) => void;
 
 
+function quatToFacing(a : Quaternion) {
+    if (!a) {
+        return 0.0;
+    }
+    return a.getEulerAngles().yawDegrees * DEGREES_TO_RADIANS + ROT_ADJUST;
+}
+
+function facingToQuat(facing : number) {
+    return Quaternion.fromEulerAngles({
+        yawDegrees: (facing - ROT_ADJUST) * RADIANS_TO_DEGREES
+    });
+}
+
 
 function pointsNearlyTheSame(a : Point3D, b : Point3D) : boolean {
     if (!a && !b) return true;
@@ -67,19 +80,12 @@ function pointsNearlyTheSame(a : Point3D, b : Point3D) : boolean {
     return true;
 }
 
-function quatToYaw(a : Quaternion) {
-    if (!a) {
-        return 0.0;
-    }
-    return a.getEulerAngles().yawDegrees * DEGREES_TO_RADIANS;
-}
-
 function yawQuatNearlyTheSame(a : Quaternion, b : Quaternion) {
     if (!a && !b) return true;
     if (!a) return false;
     if (!b) return false;
-    var aFacing = quatToYaw(a);
-    var bFacing = quatToYaw(b);
+    var aFacing = quatToFacing(a);
+    var bFacing = quatToFacing(b);
     if (Math.abs(aFacing - bFacing) > 0.001) return false;
     return true;
 }
@@ -457,16 +463,13 @@ export class HiFiMixerSession {
                         let position = new Point3D();
                         position.x = setClientData.clientPosition.x / 1000.0;
                         position.y = 0.0;
-                        position.z = setClientData.clientPosition.y / 1000.0;
+                        position.z = -setClientData.clientPosition.y / 1000.0;
                         if (this._coordFrameUtil) {
                             newUserData.position = this._coordFrameUtil.HiFiPositionToWorld(position);
                         } else {
                             newUserData.position = position;
                         }
-                        // newUserData.facing = setClientData.clientPosition.facing - ROT_ADJUST;
-                        newUserData.orientation = Quaternion.fromEulerAngles({
-                            yawDegrees: (setClientData.clientPosition.facing - ROT_ADJUST) * RADIANS_TO_DEGREES
-                        });
+                        newUserData.orientation = facingToQuat(setClientData.clientPosition.facing)
                     }
                     if (setClientData.volume !== null) {
                         const LEVEL_CONVERSION_RATIO = 2.0; // scale dB to 0.5dB
@@ -1168,8 +1171,8 @@ export class HiFiMixerSession {
                     !pointsNearlyTheSame(currentHifiAudioAPIData.position, previousHifiAudioAPIData.position)) {
                     setClientData.clientPosition = {
                         x : Math.round(currentHifiAudioAPIData.position.x * 1000),
-                        y : Math.round(currentHifiAudioAPIData.position.z * 1000),
-                        facing : quatToYaw(previousHifiAudioAPIData.orientation) + ROT_ADJUST
+                        y : -Math.round(currentHifiAudioAPIData.position.z * 1000),
+                        facing : quatToFacing(previousHifiAudioAPIData.orientation)
                     }
                     doSend = true;
                 }
@@ -1178,16 +1181,22 @@ export class HiFiMixerSession {
                     if (!setClientData.clientPosition) {
                         setClientData.clientPosition = {
                             x : Math.round(previousHifiAudioAPIData.position.x * 1000),
-                            y : Math.round(previousHifiAudioAPIData.position.z * 1000),
+                            y : -Math.round(previousHifiAudioAPIData.position.z * 1000),
                             facing : 0.0
                         }
                     }
-                    setClientData.clientPosition.facing = quatToYaw(currentHifiAudioAPIData.orientation) + ROT_ADJUST;
+                    setClientData.clientPosition.facing = quatToFacing(currentHifiAudioAPIData.orientation);
                     doSend = true;
                 } else if (setClientData.clientPosition) {
-                    setClientData.clientPosition.facing = quatToYaw(previousHifiAudioAPIData.orientation) + ROT_ADJUST;
+                    setClientData.clientPosition.facing = quatToFacing(previousHifiAudioAPIData.orientation);
                 }
             }
+
+            // if (setClientData && setClientData.clientPosition && setClientData.clientPosition.facing) {
+            //     console.log("x=" + setClientData.clientPosition.x +
+            //         " y=" + setClientData.clientPosition.y +
+            //         " facing=" + setClientData.clientPosition.facing * RADIANS_TO_DEGREES);
+            // }
 
             if (currentHifiAudioAPIData.hexColor && currentHifiAudioAPIData.hexColor != previousHifiAudioAPIData.hexColor) {
                 setClientData.hexColor = currentHifiAudioAPIData.hexColor;
