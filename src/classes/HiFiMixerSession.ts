@@ -47,6 +47,8 @@ if (!isBrowser) {
 }
 
 const ROT_ADJUST = Math.PI / 2.0;
+const RADIANS_TO_DEGREES = 180.0 / Math.PI;
+const DEGREES_TO_RADIANS = Math.PI / 180.0;
 
 const INIT_TIMEOUT_MS = 5000;
 const PERSONAL_VOLUME_ADJUST_TIMEOUT_MS = 5000;
@@ -64,6 +66,24 @@ function pointsNearlyTheSame(a : Point3D, b : Point3D) : boolean {
     if (Math.abs(a.z - b.z) > 0.001) return false;
     return true;
 }
+
+function quatToYaw(a : Quaternion) {
+    if (!a) {
+        return 0.0;
+    }
+    return a.getEulerAngles().yawDegrees * DEGREES_TO_RADIANS;
+}
+
+function yawQuatNearlyTheSame(a : Quaternion, b : Quaternion) {
+    if (!a && !b) return true;
+    if (!a) return false;
+    if (!b) return false;
+    var aFacing = quatToYaw(a);
+    var bFacing = quatToYaw(b);
+    if (Math.abs(aFacing - bFacing) > 0.001) return false;
+    return true;
+}
+
 
 
 function protoUUIDToUuid(u : Uuid) : string {
@@ -443,7 +463,10 @@ export class HiFiMixerSession {
                         } else {
                             newUserData.position = position;
                         }
-                        newUserData.facing = setClientData.clientPosition.facing - ROT_ADJUST;
+                        // newUserData.facing = setClientData.clientPosition.facing - ROT_ADJUST;
+                        newUserData.orientation = Quaternion.fromEulerAngles({
+                            yawDegrees: (setClientData.clientPosition.facing - ROT_ADJUST) * RADIANS_TO_DEGREES
+                        });
                     }
                     if (setClientData.volume !== null) {
                         const LEVEL_CONVERSION_RATIO = 2.0; // scale dB to 0.5dB
@@ -1140,38 +1163,32 @@ export class HiFiMixerSession {
                 id : RaviUtils.uuidToProtoUUID(this._raviSession.getUUID())
             };
 
-            if (currentHifiAudioAPIData.position || currentHifiAudioAPIData.facing) {
+            if (currentHifiAudioAPIData.position || currentHifiAudioAPIData.orientation) {
                 if (currentHifiAudioAPIData.position &&
                     !pointsNearlyTheSame(currentHifiAudioAPIData.position, previousHifiAudioAPIData.position)) {
                     setClientData.clientPosition = {
                         x : Math.round(currentHifiAudioAPIData.position.x * 1000),
                         y : Math.round(currentHifiAudioAPIData.position.z * 1000),
-                        facing : previousHifiAudioAPIData.facing + ROT_ADJUST
+                        facing : quatToYaw(previousHifiAudioAPIData.orientation) + ROT_ADJUST
                     }
                     doSend = true;
                 }
-                if (currentHifiAudioAPIData.facing && currentHifiAudioAPIData.facing != previousHifiAudioAPIData.facing) {
+                if (currentHifiAudioAPIData.orientation &&
+                    !yawQuatNearlyTheSame(currentHifiAudioAPIData.orientation, previousHifiAudioAPIData.orientation)) {
                     if (!setClientData.clientPosition) {
                         setClientData.clientPosition = {
                             x : Math.round(previousHifiAudioAPIData.position.x * 1000),
                             y : Math.round(previousHifiAudioAPIData.position.z * 1000),
-                            facing : 0.0 + ROT_ADJUST
+                            facing : 0.0
                         }
                     }
-                    setClientData.clientPosition.facing = currentHifiAudioAPIData.facing + ROT_ADJUST;
+                    setClientData.clientPosition.facing = quatToYaw(currentHifiAudioAPIData.orientation) + ROT_ADJUST;
                     doSend = true;
                 } else if (setClientData.clientPosition) {
-                    setClientData.clientPosition.facing = previousHifiAudioAPIData.facing + ROT_ADJUST;
+                    setClientData.clientPosition.facing = quatToYaw(previousHifiAudioAPIData.orientation) + ROT_ADJUST;
                 }
             }
 
-            // if (currentHifiAudioAPIData.hiFiGain && currentHifiAudioAPIData.hiFiGain != previousHifiAudioAPIData.hiFiGain) {
-            //     setClientData.volume = currentHifiAudioAPIData.hiFiGain;
-            //     doSend = true;
-            // }
-            // if (currentHifiAudioAPIData.volume) {
-            //     setClientData.volume = currentHifiAudioAPIData.volume;
-            // }
             if (currentHifiAudioAPIData.hexColor && currentHifiAudioAPIData.hexColor != previousHifiAudioAPIData.hexColor) {
                 setClientData.hexColor = currentHifiAudioAPIData.hexColor;
                 doSend = true;

@@ -142,7 +142,6 @@ export class HiFiAudioAPIData {
 
 
     volume: number;
-    facing: number;
     hexColor: string;
     displayName: string;
     profileImageURL: string;

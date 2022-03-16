@@ -1032,7 +1032,7 @@ export class HiFiCommunicator {
      */
     private _updateUserData({
         position,
-        facing,
+        orientation,
         hexColor,
         displayName,
         profileImageURL,
@@ -1042,7 +1042,7 @@ export class HiFiCommunicator {
         userRolloff
     }: {
         position?: Point3D,
-        facing?: number,
+        orientation?: Quaternion,
         hexColor?: string,
         displayName?: string,
         profileImageURL?: string,
@@ -1062,8 +1062,14 @@ export class HiFiCommunicator {
             this._currentHiFiAudioAPIData.position.z = position.z ?? this._currentHiFiAudioAPIData.position.z;
         }
 
-        if (facing) {
-            this._currentHiFiAudioAPIData.facing = facing;
+        if (orientation) {
+            if (!this._currentHiFiAudioAPIData.orientation) {
+                this._currentHiFiAudioAPIData.orientation = new Quaternion();
+            }
+            this._currentHiFiAudioAPIData.orientation.w = orientation.w;
+            this._currentHiFiAudioAPIData.orientation.x = orientation.x;
+            this._currentHiFiAudioAPIData.orientation.y = orientation.y;
+            this._currentHiFiAudioAPIData.orientation.z = orientation.z;
         }
 
         if (hexColor) {
@@ -1123,8 +1129,14 @@ export class HiFiCommunicator {
                 dataJustTransmitted.position.z ?? this._lastTransmittedHiFiAudioAPIData.position.z;
         }
 
-        if (dataJustTransmitted.facing) {
-            this._lastTransmittedHiFiAudioAPIData.facing = dataJustTransmitted.facing;
+        if (dataJustTransmitted.orientation) {
+            if (!this._lastTransmittedHiFiAudioAPIData.orientation) {
+                this._lastTransmittedHiFiAudioAPIData.orientation = new Quaternion;
+            }
+            this._lastTransmittedHiFiAudioAPIData.orientation.w = dataJustTransmitted.orientation.w;
+            this._lastTransmittedHiFiAudioAPIData.orientation.x = dataJustTransmitted.orientation.x;
+            this._lastTransmittedHiFiAudioAPIData.orientation.y = dataJustTransmitted.orientation.y;
+            this._lastTransmittedHiFiAudioAPIData.orientation.z = dataJustTransmitted.orientation.z;
         }
 
         if (dataJustTransmitted.hexColor) {
@@ -1308,8 +1320,8 @@ export class HiFiCommunicator {
                 //             break;
 
                 //         case AvailableUserDataSubscriptionComponents.Orientation:
-                //             if (currentDataFromServer.facing) {
-                //                 newCallbackData.facing = currentDataFromServer.facing;
+                //             if (currentDataFromServer.orientation) {
+                //                 newCallbackData.orientation = currentDataFromServer.orientation;
                 //                 shouldPushNewCallbackData = true;
                 //             }
                 //             break;
@@ -1351,8 +1363,10 @@ export class HiFiCommunicator {
      * @param usersDisconnected - An Array of {@link ReceivedHiFiAudioAPIData} regarding the users who disconnected.
      */
     private _onUsersDisconnected(clientID: string): void {
+        let disconnectedUserData : ReceivedHiFiAudioAPIData = new ReceivedHiFiAudioAPIData();
+        disconnectedUserData.hashedVisitID = clientID
         if (this.onUsersDisconnected) {
-            this.onUsersDisconnected(clientID);
+            this.onUsersDisconnected([ disconnectedUserData ]);
         }
     }
 
