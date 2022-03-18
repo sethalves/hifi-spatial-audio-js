@@ -254,6 +254,7 @@ export function coordinatorMessage_MessageTypeToJSON(
 export interface ClientHello {
   clientID: Uuid | undefined;
   secret: Uuid | undefined;
+  spaceID: string;
 }
 
 export interface CoordinatorClientMessage {
@@ -1833,7 +1834,7 @@ export const CoordinatorMessage = {
 };
 
 function createBaseClientHello(): ClientHello {
-  return { clientID: undefined, secret: undefined };
+  return { clientID: undefined, secret: undefined, spaceID: "" };
 }
 
 export const ClientHello = {
@@ -1843,6 +1844,9 @@ export const ClientHello = {
     }
     if (message.secret !== undefined) {
       Uuid.encode(message.secret, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.spaceID !== "") {
+      writer.uint32(26).string(message.spaceID);
     }
     return writer;
   },
@@ -1860,6 +1864,9 @@ export const ClientHello = {
         case 2:
           message.secret = Uuid.decode(reader, reader.uint32());
           break;
+        case 3:
+          message.spaceID = reader.string();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -1874,6 +1881,7 @@ export const ClientHello = {
         ? Uuid.fromJSON(object.clientID)
         : undefined,
       secret: isSet(object.secret) ? Uuid.fromJSON(object.secret) : undefined,
+      spaceID: isSet(object.spaceID) ? String(object.spaceID) : "",
     };
   },
 
@@ -1885,6 +1893,7 @@ export const ClientHello = {
         : undefined);
     message.secret !== undefined &&
       (obj.secret = message.secret ? Uuid.toJSON(message.secret) : undefined);
+    message.spaceID !== undefined && (obj.spaceID = message.spaceID);
     return obj;
   },
 
@@ -1900,6 +1909,7 @@ export const ClientHello = {
       object.secret !== undefined && object.secret !== null
         ? Uuid.fromPartial(object.secret)
         : undefined;
+    message.spaceID = object.spaceID ?? "";
     return message;
   },
 };
