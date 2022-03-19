@@ -489,8 +489,8 @@ export class HiFiCommunicator {
 
         // SSM format for signaling address has "/connect" at the end and no JWT (for now)
         let webRTCSignalingAddress = `wss://${signalingHostURLSafe}:${signalingPort}/connect`;
-        // this._mixerSession.webRTCAddress = `${webRTCSignalingAddress}?token=${hifiAuthJWT}`;
-        this._mixerSession.webRTCAddress = webRTCSignalingAddress;
+        this._mixerSession.webRTCAddress = `${webRTCSignalingAddress}?token=${hifiAuthJWT}`;
+        // this._mixerSession.webRTCAddress = webRTCSignalingAddress;
         HiFiLogger.log(`Using WebRTC Signaling Address:\n${webRTCSignalingAddress}<token redacted>`);
 
         // When making the initial connection, this connection method's promise shouldn't
